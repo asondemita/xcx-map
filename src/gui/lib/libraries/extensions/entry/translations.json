@@ -1,0 +1,14 @@
+{
+  "en": {
+    "gsiMap.entry.name": "Map",
+    "gsiMap.entry.description": "Draw maps with GSI tiles. No API key, works on any domain."
+  },
+  "ja": {
+    "gsiMap.entry.name": "地図 (Map)",
+    "gsiMap.entry.description": "地理院タイルで地図を描きます。APIキー不要・どのドメインでも使えます。"
+  },
+  "ja-Hira": {
+    "gsiMap.entry.name": "ちず (Map)",
+    "gsiMap.entry.description": "ちりいんタイルでちずをかきます。APIキーいらず・どのドメインでもつかえます。"
+  }
+}
