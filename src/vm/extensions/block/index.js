@@ -246,6 +246,18 @@ class ExtensionBlocks {
                     }
                 },
                 {
+                    opcode: 'plotData',
+                    blockType: BlockType.COMMAND,
+                    text: formatMessage({
+                        id: 'map.plotData',
+                        default: 'データ [DATA] をプロットする',
+                        description: 'plot pasted CSV/TSV rows (lat, lng, name, color)'
+                    }),
+                    arguments: {
+                        DATA: {type: ArgumentType.STRING, defaultValue: '35.68,139.76,東京,赤'}
+                    }
+                },
+                {
                     opcode: 'setLastPinName',
                     blockType: BlockType.COMMAND,
                     text: formatMessage({
@@ -284,6 +296,18 @@ class ExtensionBlocks {
                             menu: 'pinNumberMenu',
                             defaultValue: 'off'
                         }
+                    }
+                },
+                {
+                    opcode: 'removePin',
+                    blockType: BlockType.COMMAND,
+                    text: formatMessage({
+                        id: 'map.removePin',
+                        default: 'ピン番号 [NUMBER] を消す',
+                        description: 'remove the pin with the given number'
+                    }),
+                    arguments: {
+                        NUMBER: {type: ArgumentType.NUMBER, defaultValue: 1}
                     }
                 },
                 {
@@ -944,6 +968,14 @@ class ExtensionBlocks {
         return this._redraw();
     }
 
+    removePin (args) {
+        const i = Cast.toNumber(args.NUMBER) - 1;
+        if (i >= 0 && i < this._points.length) {
+            this._points.splice(i, 1);
+        }
+        return this._redraw();
+    }
+
     setPinNumber (args) {
         this._pinNumbered = Cast.toString(args.MODE) === 'on';
         return this._redraw();
@@ -958,13 +990,107 @@ class ExtensionBlocks {
         return this._redraw();
     }
 
+    // A short name (max 6 chars then "..."; empty becomes '').
+    _truncateName (raw) {
+        const chars = Array.from(Cast.toString(raw));
+        return chars.length > 6 ? `${chars.slice(0, 6).join('')}...` : chars.join('');
+    }
+
+    // Map a color name (赤/あか/red/… or a #rrggbb) to a hex string.
+    _colorNameToHex (name) {
+        const raw = Cast.toString(name).trim();
+        if (/^#[0-9a-f]{6}$/i.test(raw)) {
+            return raw;
+        }
+        const key = raw.toLowerCase();
+        const groups = [
+            ['#e53935', ['赤', 'あか', 'red']],
+            ['#fdd835', ['黄', '黄色', 'きいろ', 'yellow']],
+            ['#1e88e5', ['青', 'あお', 'blue']],
+            ['#43a047', ['緑', 'みどり', 'green']],
+            ['#fb8c00', ['橙', 'だいだい', 'オレンジ', 'orange']],
+            ['#8e24aa', ['紫', 'むらさき', 'purple']],
+            ['#6d4c41', ['茶', '茶色', 'ちゃ', 'ちゃいろ', 'brown']],
+            ['#000000', ['黒', 'くろ', 'black']]
+        ];
+        for (const group of groups) {
+            if (group[1].indexOf(raw) >= 0 || group[1].indexOf(key) >= 0) {
+                return group[0];
+            }
+        }
+        return '#e53935';
+    }
+
+    /**
+     * Parse pasted CSV/TSV (lat, lng, name?, color?) into records. Rows split
+     * on newline or ';'; fields on tab or comma. If line breaks were stripped
+     * on paste (one flat token stream), records are rebuilt from the lat/lng
+     * number pairs (so columns repeat at a fixed period).
+     * @param {string} raw - pasted text.
+     * @returns {Array} - [{lat, lng, name, color}].
+     */
+    _plotParse (raw) {
+        const text = Cast.toString(raw).replace(/\r\n?/g, '\n');
+        const isNum = s => s !== '' && isFinite(Number(s));
+        const make = f => ({
+            lat: Number(f[0]),
+            lng: Number(f[1]),
+            name: (f[2] || '').trim(),
+            color: (f[3] || '').trim()
+        });
+        if ((/[\n;]/).test(text)) {
+            const recs = [];
+            for (const row of text.split(/[\n;]+/)) {
+                const f = row.split(/[\t,]/).map(s => s.trim());
+                if (f.length >= 2 && isNum(f[0]) && isNum(f[1])) {
+                    recs.push(make(f));
+                }
+            }
+            return recs;
+        }
+        // Flat stream (line breaks lost on paste): rebuild rows by column period.
+        const tok = text.split(/[\t,]/).map(s => s.trim());
+        let start = 0;
+        while (start + 1 < tok.length && !(isNum(tok[start]) && isNum(tok[start + 1]))) {
+            start++;
+        }
+        let cols = tok.length - start;
+        for (let i = start + 2; i + 1 < tok.length; i++) {
+            if (isNum(tok[i]) && isNum(tok[i + 1])) {
+                cols = i - start;
+                break;
+            }
+        }
+        if (cols < 2) {
+            cols = 2;
+        }
+        const recs = [];
+        for (let i = start; i + 1 < tok.length; i += cols) {
+            if (isNum(tok[i]) && isNum(tok[i + 1])) {
+                recs.push(make(tok.slice(i, i + cols)));
+            }
+        }
+        return recs;
+    }
+
+    plotData (args) {
+        for (const r of this._plotParse(args.DATA)) {
+            const pin = {lat: r.lat, lng: r.lng, color: this._colorNameToHex(r.color)};
+            const name = this._truncateName(r.name);
+            if (name) {
+                pin.name = name;
+            }
+            this._points.push(pin);
+        }
+        return this._redraw();
+    }
+
     // Set a pin's name shown on the map (max 6 chars + …; empty clears).
     _applyPinName (point, raw) {
         if (!point) {
             return;
         }
-        const chars = Array.from(Cast.toString(raw));
-        point.name = chars.length > 6 ? `${chars.slice(0, 6).join('')}...` : chars.join('');
+        point.name = this._truncateName(raw);
     }
 
     setLastPinName (args) {

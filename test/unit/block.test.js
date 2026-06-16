@@ -272,6 +272,38 @@ describe("blockClass", () => {
         expect(block.centerLat).toBe(35.5);
     });
 
+    test("plotData parses multiline CSV (lat,lng,name,color), appends pins", () => {
+        const block = new blockClass(runtime);
+        block._points = [{ lat: 0, lng: 0 }]; // existing pin stays
+        block.plotData({
+            DATA: "緯度,経度,名前,色\n35.68,139.76,東京,赤\n34.70,135.50,,青"
+        });
+        expect(block._points).toHaveLength(3); // header skipped, 1 existing + 2 new
+        expect(block._points[1]).toMatchObject({ lat: 35.68, lng: 139.76, color: "#e53935", name: "東京" });
+        // empty name -> no name set (no bubble)
+        expect(block._points[2]).toMatchObject({ lat: 34.7, lng: 135.5, color: "#1e88e5" });
+        expect(block._points[2].name).toBeUndefined();
+    });
+
+    test("plotData rebuilds rows when line breaks were stripped (flat TSV)", () => {
+        const block = new blockClass(runtime);
+        block.clearPoints();
+        // tabs survive, newlines gone -> one flat stream, 4 columns
+        block.plotData({ DATA: "35.68\t139.76\t東京\t赤\t34.70\t135.50\t大阪\t青" });
+        expect(block._points).toHaveLength(2);
+        expect(block._points[0]).toMatchObject({ lat: 35.68, lng: 139.76, name: "東京", color: "#e53935" });
+        expect(block._points[1]).toMatchObject({ lat: 34.7, lng: 135.5, name: "大阪", color: "#1e88e5" });
+    });
+
+    test("removePin removes the numbered pin (1-based), no-op if missing", () => {
+        const block = new blockClass(runtime);
+        block._points = [{ lat: 1, lng: 1 }, { lat: 2, lng: 2 }, { lat: 3, lng: 3 }];
+        block.removePin({ NUMBER: 2 });
+        expect(block._points.map(p => p.lat)).toEqual([1, 3]);
+        expect(() => block.removePin({ NUMBER: 9 })).not.toThrow();
+        expect(block._points).toHaveLength(2);
+    });
+
     test("addCenterPin drops a pin at the current map center", () => {
         const block = new blockClass(runtime);
         block.clearPoints();

@@ -736,6 +736,7 @@ var en = {
 	"map.panVertical": "move map [PIXELS] pixels vertically",
 	"map.setOpacity": "set map transparency to [OPACITY]",
 	"map.addCenterPin": "drop a [COLOR] pin at the map center",
+	"map.plotData": "plot data [DATA]",
 	"map.setLastPinName": "set the name of the last pin to [NAME]",
 	"map.setPinName": "set the name of pin [NUMBER] to [NAME]",
 	"map.clearPoints": "clear all pins",
@@ -743,6 +744,7 @@ var en = {
 	"map.setPinNumber": "turn pin numbers [MODE]",
 	"map.pinNumber.off": "off",
 	"map.pinNumber.on": "on",
+	"map.removePin": "remove pin [NUMBER]",
 	"map.scrollBetweenPins": "scroll from pin [FROM] to pin [TO]",
 	"map.pinDistance": "distance from pin [FROM] to pin [TO] (km)",
 	"map.mapLat": "center latitude",
@@ -772,6 +774,7 @@ var ja = {
 	"map.panVertical": "地図を縦に [PIXELS] ピクセル移動する",
 	"map.setOpacity": "地図の透明度を [OPACITY] にする",
 	"map.addCenterPin": "地図の中心に [COLOR] 色のピンを立てる",
+	"map.plotData": "データ [DATA] をプロットする",
 	"map.setLastPinName": "直前のピンの名前を [NAME] にする",
 	"map.setPinName": "ピン番号 [NUMBER] の名前を [NAME] にする",
 	"map.clearPoints": "全てのピンを消す",
@@ -779,6 +782,7 @@ var ja = {
 	"map.setPinNumber": "ピン番号を表示 [MODE]",
 	"map.pinNumber.off": "しない",
 	"map.pinNumber.on": "する",
+	"map.removePin": "ピン番号 [NUMBER] を消す",
 	"map.scrollBetweenPins": "ピン番号 [FROM] からピン番号 [TO] へスクロールする",
 	"map.pinDistance": "ピン番号 [FROM] からピン番号 [TO] までの距離(km)",
 	"map.mapLat": "中心の緯度",
@@ -811,6 +815,7 @@ var translations = {
 	"map.panVertical": "ちずをたてに [PIXELS] ピクセルうごかす",
 	"map.setOpacity": "ちずのとうめいどを [OPACITY] にする",
 	"map.addCenterPin": "ちずのちゅうしんに [COLOR] いろのピンをたてる",
+	"map.plotData": "データ [DATA] をプロットする",
 	"map.setLastPinName": "ちょくぜんのピンのなまえを [NAME] にする",
 	"map.setPinName": "ピンばんごう [NUMBER] のなまえを [NAME] にする",
 	"map.clearPoints": "すべてのピンをけす",
@@ -818,6 +823,7 @@ var translations = {
 	"map.setPinNumber": "ピンばんごうをひょうじ [MODE]",
 	"map.pinNumber.off": "しない",
 	"map.pinNumber.on": "する",
+	"map.removePin": "ピンばんごう [NUMBER] をけす",
 	"map.scrollBetweenPins": "ピンばんごう [FROM] からピンばんごう [TO] へスクロールする",
 	"map.pinDistance": "ピンばんごう [FROM] からピンばんごう [TO] までのきょり(km)",
 	"map.mapLat": "ちゅうしんのいど",
@@ -1043,6 +1049,20 @@ var ExtensionBlocks = /*#__PURE__*/function () {
             }
           }
         }, {
+          opcode: 'plotData',
+          blockType: BlockType.COMMAND,
+          text: formatMessage({
+            id: 'map.plotData',
+            default: 'データ [DATA] をプロットする',
+            description: 'plot pasted CSV/TSV rows (lat, lng, name, color)'
+          }),
+          arguments: {
+            DATA: {
+              type: ArgumentType.STRING,
+              defaultValue: '35.68,139.76,東京,赤'
+            }
+          }
+        }, {
           opcode: 'setLastPinName',
           blockType: BlockType.COMMAND,
           text: formatMessage({
@@ -1087,6 +1107,20 @@ var ExtensionBlocks = /*#__PURE__*/function () {
               type: ArgumentType.STRING,
               menu: 'pinNumberMenu',
               defaultValue: 'off'
+            }
+          }
+        }, {
+          opcode: 'removePin',
+          blockType: BlockType.COMMAND,
+          text: formatMessage({
+            id: 'map.removePin',
+            default: 'ピン番号 [NUMBER] を消す',
+            description: 'remove the pin with the given number'
+          }),
+          arguments: {
+            NUMBER: {
+              type: ArgumentType.NUMBER,
+              defaultValue: 1
             }
           }
         }, {
@@ -1884,6 +1918,15 @@ var ExtensionBlocks = /*#__PURE__*/function () {
       return this._redraw();
     }
   }, {
+    key: "removePin",
+    value: function removePin(args) {
+      var i = Cast.toNumber(args.NUMBER) - 1;
+      if (i >= 0 && i < this._points.length) {
+        this._points.splice(i, 1);
+      }
+      return this._redraw();
+    }
+  }, {
     key: "setPinNumber",
     value: function setPinNumber(args) {
       this._pinNumbered = Cast.toString(args.MODE) === 'on';
@@ -1900,6 +1943,130 @@ var ExtensionBlocks = /*#__PURE__*/function () {
       return this._redraw();
     }
 
+    // A short name (max 6 chars then "..."; empty becomes '').
+  }, {
+    key: "_truncateName",
+    value: function _truncateName(raw) {
+      var chars = Array.from(Cast.toString(raw));
+      return chars.length > 6 ? "".concat(chars.slice(0, 6).join(''), "...") : chars.join('');
+    }
+
+    // Map a color name (赤/あか/red/… or a #rrggbb) to a hex string.
+  }, {
+    key: "_colorNameToHex",
+    value: function _colorNameToHex(name) {
+      var raw = Cast.toString(name).trim();
+      if (/^#[0-9a-f]{6}$/i.test(raw)) {
+        return raw;
+      }
+      var key = raw.toLowerCase();
+      var groups = [['#e53935', ['赤', 'あか', 'red']], ['#fdd835', ['黄', '黄色', 'きいろ', 'yellow']], ['#1e88e5', ['青', 'あお', 'blue']], ['#43a047', ['緑', 'みどり', 'green']], ['#fb8c00', ['橙', 'だいだい', 'オレンジ', 'orange']], ['#8e24aa', ['紫', 'むらさき', 'purple']], ['#6d4c41', ['茶', '茶色', 'ちゃ', 'ちゃいろ', 'brown']], ['#000000', ['黒', 'くろ', 'black']]];
+      for (var _i = 0, _groups = groups; _i < _groups.length; _i++) {
+        var group = _groups[_i];
+        if (group[1].indexOf(raw) >= 0 || group[1].indexOf(key) >= 0) {
+          return group[0];
+        }
+      }
+      return '#e53935';
+    }
+
+    /**
+     * Parse pasted CSV/TSV (lat, lng, name?, color?) into records. Rows split
+     * on newline or ';'; fields on tab or comma. If line breaks were stripped
+     * on paste (one flat token stream), records are rebuilt from the lat/lng
+     * number pairs (so columns repeat at a fixed period).
+     * @param {string} raw - pasted text.
+     * @returns {Array} - [{lat, lng, name, color}].
+     */
+  }, {
+    key: "_plotParse",
+    value: function _plotParse(raw) {
+      var text = Cast.toString(raw).replace(/\r\n?/g, '\n');
+      var isNum = function isNum(s) {
+        return s !== '' && isFinite(Number(s));
+      };
+      var make = function make(f) {
+        return {
+          lat: Number(f[0]),
+          lng: Number(f[1]),
+          name: (f[2] || '').trim(),
+          color: (f[3] || '').trim()
+        };
+      };
+      if (/[\n;]/.test(text)) {
+        var _recs = [];
+        var _iterator2 = _createForOfIteratorHelper(text.split(/[\n;]+/)),
+          _step2;
+        try {
+          for (_iterator2.s(); !(_step2 = _iterator2.n()).done;) {
+            var row = _step2.value;
+            var f = row.split(/[\t,]/).map(function (s) {
+              return s.trim();
+            });
+            if (f.length >= 2 && isNum(f[0]) && isNum(f[1])) {
+              _recs.push(make(f));
+            }
+          }
+        } catch (err) {
+          _iterator2.e(err);
+        } finally {
+          _iterator2.f();
+        }
+        return _recs;
+      }
+      // Flat stream (line breaks lost on paste): rebuild rows by column period.
+      var tok = text.split(/[\t,]/).map(function (s) {
+        return s.trim();
+      });
+      var start = 0;
+      while (start + 1 < tok.length && !(isNum(tok[start]) && isNum(tok[start + 1]))) {
+        start++;
+      }
+      var cols = tok.length - start;
+      for (var i = start + 2; i + 1 < tok.length; i++) {
+        if (isNum(tok[i]) && isNum(tok[i + 1])) {
+          cols = i - start;
+          break;
+        }
+      }
+      if (cols < 2) {
+        cols = 2;
+      }
+      var recs = [];
+      for (var _i2 = start; _i2 + 1 < tok.length; _i2 += cols) {
+        if (isNum(tok[_i2]) && isNum(tok[_i2 + 1])) {
+          recs.push(make(tok.slice(_i2, _i2 + cols)));
+        }
+      }
+      return recs;
+    }
+  }, {
+    key: "plotData",
+    value: function plotData(args) {
+      var _iterator3 = _createForOfIteratorHelper(this._plotParse(args.DATA)),
+        _step3;
+      try {
+        for (_iterator3.s(); !(_step3 = _iterator3.n()).done;) {
+          var r = _step3.value;
+          var pin = {
+            lat: r.lat,
+            lng: r.lng,
+            color: this._colorNameToHex(r.color)
+          };
+          var name = this._truncateName(r.name);
+          if (name) {
+            pin.name = name;
+          }
+          this._points.push(pin);
+        }
+      } catch (err) {
+        _iterator3.e(err);
+      } finally {
+        _iterator3.f();
+      }
+      return this._redraw();
+    }
+
     // Set a pin's name shown on the map (max 6 chars + …; empty clears).
   }, {
     key: "_applyPinName",
@@ -1907,8 +2074,7 @@ var ExtensionBlocks = /*#__PURE__*/function () {
       if (!point) {
         return;
       }
-      var chars = Array.from(Cast.toString(raw));
-      point.name = chars.length > 6 ? "".concat(chars.slice(0, 6).join(''), "...") : chars.join('');
+      point.name = this._truncateName(raw);
     }
   }, {
     key: "setLastPinName",
@@ -1949,11 +2115,11 @@ var ExtensionBlocks = /*#__PURE__*/function () {
         var maxX = -Infinity;
         var minY = Infinity;
         var maxY = -Infinity;
-        var _iterator2 = _createForOfIteratorHelper(_this3._points),
-          _step2;
+        var _iterator4 = _createForOfIteratorHelper(_this3._points),
+          _step4;
         try {
-          for (_iterator2.s(); !(_step2 = _iterator2.n()).done;) {
-            var p = _step2.value;
+          for (_iterator4.s(); !(_step4 = _iterator4.n()).done;) {
+            var p = _step4.value;
             var wx = _this3._lngToWorldX(p.lng, zoom);
             var wy = _this3._latToWorldY(p.lat, zoom);
             if (wx < minX) minX = wx;
@@ -1962,9 +2128,9 @@ var ExtensionBlocks = /*#__PURE__*/function () {
             if (wy > maxY) maxY = wy;
           }
         } catch (err) {
-          _iterator2.e(err);
+          _iterator4.e(err);
         } finally {
-          _iterator2.f();
+          _iterator4.f();
         }
         return {
           minX: minX,
