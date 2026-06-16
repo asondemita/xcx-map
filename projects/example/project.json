@@ -79,7 +79,7 @@
                     "topLevel": false
                 },
                 "nQ]C2TOO}(vYi-.bOQ.)": {
-                    "opcode": "gsiMap_do-it",
+                    "opcode": "map_do-it",
                     "next": null,
                     "parent": "2GthS.8+si{!3dHoqas,",
                     "inputs": {
@@ -142,12 +142,12 @@
     ],
     "monitors": [],
     "extensions": [
-        "gsiMap"
+        "map"
     ],
     "extensionURLs": [
         [
-            "gsiMap",
-            "https://asondemita.github.io/xcx-map/dist/gsiMap.mjs"
+            "map",
+            "https://asondemita.github.io/xcx-map/dist/map.mjs"
         ]
     ],
     "meta": {

@@ -1,16 +1,11 @@
 {
-  "extensionId": "gsiMap",
+  "extensionId": "map",
   "versions": [
     {
-      "version": "0.0.2",
-      "buildDate": "2026-06-16T04:56:48.559Z",
-      "module": "0.0.2/gsiMap.mjs"
-    },
-    {
-      "version": "0.0.1",
-      "buildDate": "2026-06-16T04:52:54.261Z",
-      "module": "0.0.1/gsiMap.mjs"
+      "version": "0.1.0",
+      "buildDate": "2026-06-16T05:27:19.468Z",
+      "module": "0.1.0/map.mjs"
     }
   ],
-  "latest": "0.0.2"
+  "latest": "0.1.0"
 }

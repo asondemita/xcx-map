@@ -15,7 +15,7 @@ describe("blockClass", () => {
     test("getInfo returns the extension id and blocks", () => {
         const block = new blockClass(runtime);
         const info = block.getInfo();
-        expect(info.id).toBe("gsiMap");
+        expect(info.id).toBe("map");
         expect(Array.isArray(info.blocks)).toBe(true);
     });
 

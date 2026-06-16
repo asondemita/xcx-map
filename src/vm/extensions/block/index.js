@@ -26,14 +26,14 @@ const setupTranslations = () => {
     }
 };
 
-const EXTENSION_ID = 'gsiMap';
+const EXTENSION_ID = 'map';
 
 /**
  * URL to get this extension as a module.
  * When it was loaded as a module, 'extensionURL' will be replaced a URL which is retrieved from.
  * @type {string}
  */
-let extensionURL = 'https://asondemita.github.io/xcx-map/dist/gsiMap.mjs';
+let extensionURL = 'https://asondemita.github.io/xcx-map/dist/map.mjs';
 
 /**
  * Scratch stage size in stage units (native renderer resolution).
@@ -73,7 +73,7 @@ const MIN_ZOOM = 0;
 const MAX_ZOOM = 19;
 
 /**
- * Scratch 3.0 blocks which draw maps using GSI raster tiles.
+ * Scratch 3.0 blocks which draw maps using OpenStreetMap raster tiles.
  */
 class ExtensionBlocks {
     /**
@@ -90,7 +90,7 @@ class ExtensionBlocks {
      */
     static get EXTENSION_NAME () {
         return formatMessage({
-            id: 'gsiMap.name',
+            id: 'map.name',
             default: '地図 (Map)',
             description: 'name of the extension'
         });
@@ -175,7 +175,7 @@ class ExtensionBlocks {
                     opcode: 'showMapAt',
                     blockType: BlockType.COMMAND,
                     text: formatMessage({
-                        id: 'gsiMap.showMapAt',
+                        id: 'map.showMapAt',
                         default: '緯度 [LAT] 経度 [LNG] ズーム [ZOOM] の地図を表示する',
                         description: 'display a map at the given location'
                     }),
@@ -189,7 +189,7 @@ class ExtensionBlocks {
                     opcode: 'setCenter',
                     blockType: BlockType.COMMAND,
                     text: formatMessage({
-                        id: 'gsiMap.setCenter',
+                        id: 'map.setCenter',
                         default: '緯度 [LAT] 経度 [LNG] に地図を動かす',
                         description: 'move the map center'
                     }),
@@ -202,7 +202,7 @@ class ExtensionBlocks {
                     opcode: 'setZoom',
                     blockType: BlockType.COMMAND,
                     text: formatMessage({
-                        id: 'gsiMap.setZoom',
+                        id: 'map.setZoom',
                         default: 'ズームを [ZOOM] にする',
                         description: 'set the zoom level'
                     }),
@@ -214,7 +214,7 @@ class ExtensionBlocks {
                     opcode: 'changeZoom',
                     blockType: BlockType.COMMAND,
                     text: formatMessage({
-                        id: 'gsiMap.changeZoom',
+                        id: 'map.changeZoom',
                         default: 'ズームを [ZOOM] ずつ変える',
                         description: 'change the zoom level by the given amount'
                     }),
@@ -226,7 +226,7 @@ class ExtensionBlocks {
                     opcode: 'setMapType',
                     blockType: BlockType.COMMAND,
                     text: formatMessage({
-                        id: 'gsiMap.setMapType',
+                        id: 'map.setMapType',
                         default: '地図の種類を [TYPE] にする',
                         description: 'set the kind of map tiles'
                     }),
@@ -243,7 +243,7 @@ class ExtensionBlocks {
                     opcode: 'mapLat',
                     blockType: BlockType.REPORTER,
                     text: formatMessage({
-                        id: 'gsiMap.mapLat',
+                        id: 'map.mapLat',
                         default: '地図の中心の緯度',
                         description: 'latitude of the map center'
                     })
@@ -252,7 +252,7 @@ class ExtensionBlocks {
                     opcode: 'mapLng',
                     blockType: BlockType.REPORTER,
                     text: formatMessage({
-                        id: 'gsiMap.mapLng',
+                        id: 'map.mapLng',
                         default: '地図の中心の経度',
                         description: 'longitude of the map center'
                     })
@@ -261,7 +261,7 @@ class ExtensionBlocks {
                     opcode: 'mapZoom',
                     blockType: BlockType.REPORTER,
                     text: formatMessage({
-                        id: 'gsiMap.mapZoom',
+                        id: 'map.mapZoom',
                         default: '地図のズーム',
                         description: 'current zoom level of the map'
                     })
@@ -271,7 +271,7 @@ class ExtensionBlocks {
                     opcode: 'lngToX',
                     blockType: BlockType.REPORTER,
                     text: formatMessage({
-                        id: 'gsiMap.lngToX',
+                        id: 'map.lngToX',
                         default: '経度 [LNG] の x座標',
                         description: 'x position on the stage for a longitude'
                     }),
@@ -283,7 +283,7 @@ class ExtensionBlocks {
                     opcode: 'latToY',
                     blockType: BlockType.REPORTER,
                     text: formatMessage({
-                        id: 'gsiMap.latToY',
+                        id: 'map.latToY',
                         default: '緯度 [LAT] の y座標',
                         description: 'y position on the stage for a latitude'
                     }),
@@ -295,7 +295,7 @@ class ExtensionBlocks {
                     opcode: 'xToLng',
                     blockType: BlockType.REPORTER,
                     text: formatMessage({
-                        id: 'gsiMap.xToLng',
+                        id: 'map.xToLng',
                         default: 'x座標 [X] の経度',
                         description: 'longitude at an x position on the stage'
                     }),
@@ -307,7 +307,7 @@ class ExtensionBlocks {
                     opcode: 'yToLat',
                     blockType: BlockType.REPORTER,
                     text: formatMessage({
-                        id: 'gsiMap.yToLat',
+                        id: 'map.yToLat',
                         default: 'y座標 [Y] の緯度',
                         description: 'latitude at a y position on the stage'
                     }),
@@ -320,7 +320,7 @@ class ExtensionBlocks {
                     opcode: 'getCurrentLocation',
                     blockType: BlockType.COMMAND,
                     text: formatMessage({
-                        id: 'gsiMap.getCurrentLocation',
+                        id: 'map.getCurrentLocation',
                         default: '現在地を取得する',
                         description: 'get the current location of the device'
                     })
@@ -329,7 +329,7 @@ class ExtensionBlocks {
                     opcode: 'currentLatReporter',
                     blockType: BlockType.REPORTER,
                     text: formatMessage({
-                        id: 'gsiMap.currentLat',
+                        id: 'map.currentLat',
                         default: '現在地の緯度',
                         description: 'latitude of the current location'
                     })
@@ -338,7 +338,7 @@ class ExtensionBlocks {
                     opcode: 'currentLngReporter',
                     blockType: BlockType.REPORTER,
                     text: formatMessage({
-                        id: 'gsiMap.currentLng',
+                        id: 'map.currentLng',
                         default: '現在地の経度',
                         description: 'longitude of the current location'
                     })
@@ -347,7 +347,7 @@ class ExtensionBlocks {
                     opcode: 'distance',
                     blockType: BlockType.REPORTER,
                     text: formatMessage({
-                        id: 'gsiMap.distance',
+                        id: 'map.distance',
                         default: '緯度 [LAT1] 経度 [LNG1] から 緯度 [LAT2] 経度 [LNG2] までの距離(km)',
                         description: 'distance between two points in kilometers'
                     }),
@@ -362,7 +362,7 @@ class ExtensionBlocks {
                     opcode: 'elevation',
                     blockType: BlockType.REPORTER,
                     text: formatMessage({
-                        id: 'gsiMap.elevation',
+                        id: 'map.elevation',
                         default: '緯度 [LAT] 経度 [LNG] の標高(m)',
                         description: 'elevation at a point in meters'
                     }),
@@ -390,7 +390,7 @@ class ExtensionBlocks {
         return [
             {
                 text: formatMessage({
-                    id: 'gsiMap.mapType.std',
+                    id: 'map.mapType.std',
                     default: '標準地図',
                     description: 'standard map'
                 }),

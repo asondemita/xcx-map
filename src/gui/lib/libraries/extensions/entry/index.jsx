@@ -20,13 +20,13 @@ const version = `v${packageVersion}`;
 const entry = {
     get name () {
         return formatMessage({
-            id: 'gsiMap.entry.name',
+            id: 'map.entry.name',
             defaultMessage: '地図 (Map)',
             description: 'name of the extension'
         });
     },
-    extensionId: 'gsiMap',
-    extensionURL: 'https://asondemita.github.io/xcx-map/dist/gsiMap.mjs',
+    extensionId: 'map',
+    extensionURL: 'https://asondemita.github.io/xcx-map/dist/map.mjs',
     collaborator: 'asondemita',
     iconURL: iconURL,
     insetIconURL: insetIconURL,
@@ -34,7 +34,7 @@ const entry = {
         return `${formatMessage({
             defaultMessage: 'OpenStreetMap で地図を描きます。APIキー不要・どのドメインでも使えます。',
             description: 'Description for this extension',
-            id: 'gsiMap.entry.description'
+            id: 'map.entry.description'
         })} (${version})`;
     },
     tags: ['map', 'osm'],
