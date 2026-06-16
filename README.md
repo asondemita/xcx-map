@@ -1,200 +1,115 @@
-# 地図
+# 地図（Map）
 
-ラスタタイルを Scratch のステージに直接描く [Xcratch](https://xcratch.github.io/) 拡張です。**APIキー不要**で使えます（出典の明記が条件）。
+Scratch のステージに世界の地図を表示できる [Xcratch](https://xcratch.github.io/) の拡張機能です。
+地図の上でスプライトを動かしたり、行きたい場所にピンを立てたりできます。地図はステージのいちばん後ろに描かれるので、スプライトは地図の上に重なって表示されます。
 
-[geolonia/x-geo-scratch](https://github.com/geolonia/x-geo-scratch) と同じ軽量方式で、タイルは **OpenStreetMap 標準（全世界・既定）** と **国土地理院 淡色地図（日本のみ）** をブロックで切り替えられます。淡色地図に切り替えると日本国内のみの表示になります。
+地図は次の2種類から選べます。
 
-地図は `renderer.createBitmapSkin()` でステージの背面レイヤーに描かれるため、スプライトは地図の上に重なって表示されます。
+- **標準（はじめの設定）**: OpenStreetMap の地図。世界中どこでも表示できます。
+- **淡色（たんしょく）**: 国土地理院の地図。色がうすくて見やすいですが、表示できるのは日本国内だけです。
 
-## ✨ できること（ブロック一覧）
+## 使い方（Xcratch への入れ方）
+
+1. [Xcratch エディタ](https://xcratch.github.io/editor) を開く
+2. 左下の「拡張機能を追加」ボタンを押す
+3. 「Extension Loader」を選ぶ
+4. 入力欄に、次の URL を貼り付ける
+
+   ```
+   https://asondemita.github.io/xcx-map/dist/map.mjs
+   ```
+
+5. 「OK」を押すと、地図のブロックが使えるようになります
+
+▶ [サンプルプロジェクトを開いてみる](https://xcratch.github.io/editor/#https://asondemita.github.io/xcx-map/projects/example.sb3)
+
+<iframe src="https://xcratch.github.io/editor/player#https://asondemita.github.io/xcx-map/projects/example.sb3" width="540px" height="460px" allow="geolocation"></iframe>
+
+## できること（ブロック一覧）
 
 **地図の表示**
-- `現在位置の地図を表示する`（端末の位置情報を取得し、その地点を地図の中心に表示。HTTPSと許可が必要）
-- `() の地図を表示する`（地名キーワードで検索して表示。範囲に合わせて自動ズーム）
+- `現在位置の地図を表示する`（今いる場所を地図の中心に表示します。位置情報の許可が必要です）
+- `() の地図を表示する`（場所の名前で検索して表示します。ちょうどよい大きさに自動で合わせます）
 - `緯度 () 経度 () の地図を表示する`
 
 **ピン**
-- `地図の中心に () 色のピンを立てる`（色は赤・黄・青・緑・橙・紫・茶・黒から選択）
-- `直前のピンの名前を () にする` / `ピン番号 () の名前を () にする`（地図上に名前を表示。7文字以上は6文字＋「...」に短縮、空文字で消去）
-- `全てのピンが見えるように地図を調整する`
-- `ピン番号を表示 ()`（`する`／`しない`＝既定。立てた順に 1 から番号を表示）
+- `地図の中心に () 色のピンを立てる`（色は 赤・黄・青・緑・橙・紫・茶・黒 から選べます）
+- `直前のピンの名前を () にする` / `ピン番号 () の名前を () にする`（ピンの近くに名前を表示します。7文字以上は6文字＋「…」に短くなり、空っぽにすると消えます）
+- `全てのピンが見えるように地図を調整する`（立てたピンが全部入るように位置と大きさを合わせます）
+- `ピン番号を表示 ()`（`する`／`しない`。立てた順に 1 から番号をつけます）
 - `全てのピンを消す`
 
 **移動・ズーム**
-- `ズームを () にする` / `ズームを () ずつ変える`
-- `地図を横に () ピクセル移動する`（+で東＝右へ）/ `地図を縦に () ピクセル移動する`（+で北＝上へ）
-- `ピン番号 () からピン番号 () へスクロールする`（中間でズームアウトして弧を描くように移動し、元のズームに戻る）
+- `ズームを () にする` / `ズームを () ずつ変える`（数が大きいほど拡大します）
+- `地図を横に () ピクセル移動する`（+ で右へ）/ `地図を縦に () ピクセル移動する`（+ で上へ）
+- `ピン番号 () からピン番号 () へスクロールする`（2つのピンの間を、いったん引いてからなめらかに移動します）
 
-**状態・距離**
-- `中心の緯度` / `中心の経度`（地図の中心の緯度・経度）
-- `ピン番号 () からピン番号 () までの距離(km)`（ハバーサイン）
-- `緯度 () 経度 () から 緯度 () 経度 () までの距離(km)`（ハバーサイン）
+**しらべる**
+- `中心の緯度` / `中心の経度`（今表示している地図の中心の緯度・経度）
+- `ピン番号 () からピン番号 () までの距離(km)`
+- `緯度 () 経度 () から 緯度 () 経度 () までの距離(km)`
 
 **設定**
-- `地図の種類を () にする`（`標準`＝OpenStreetMap/全世界・既定／`淡色`＝国土地理院/日本のみ）
-- `地図の透明度を () にする`（0＝不透明〜100＝透明。Scratch の「透明度」効果と同じ）
+- `地図の種類を () にする`（`標準`＝世界中／`淡色`＝日本だけ）
+- `地図の透明度を () にする`（0 でくっきり、100 でとうめい）
 
-## 🗾 地図データの出典
+## 地図を使うときの注意
 
-選択中のタイルに応じて、地図右下に出典を自動表示します。
+地図のタイル（小さな画像）や地名の検索は、ボランティアや公共機関が無料で提供しているサーバーから取りよせています。みんなで気持ちよく使うために、次のことに気をつけてください。
 
-- **標準（既定）**: [OpenStreetMap](https://www.openstreetmap.org/) 標準タイル。地図データは © OpenStreetMap contributors（[ODbL](https://www.openstreetmap.org/copyright)）。
-- **淡色**: [地理院タイル](https://maps.gsi.go.jp/development/ichiran.html)（国土地理院）。日本国内のみ。
+- **大人数で一度にたくさん地図を読みこむと、サーバーに大きな負担がかかります。** クラス全員が同時にたくさんの地図や地名検索をすると、アクセスが一時的に止められることがあります。
+- 地名で検索する `() の地図を表示する` は、1秒間に何回も続けて検索したり、一度に大量に検索したりしないでください。
+- 地図の出典（© OpenStreetMap contributors ／ 地理院タイル）は、地図の右下に自動で表示されます。
 
-### ⚠️ タイル利用についての注意（過剰利用時のブロック）
+参考リンク：
+[OpenStreetMap タイル利用ポリシー](https://operations.osmfoundation.org/policies/tiles/) ／
+[Nominatim 利用ポリシー](https://operations.osmfoundation.org/policies/nominatim/) ／
+[国土地理院 地理院タイル](https://maps.gsi.go.jp/development/ichiran.html)
 
-タイルは国土地理院（`cyberjapandata.gsi.go.jp`）および OpenStreetMap Foundation の公式タイルサーバー（`tile.openstreetmap.org`）から取得しています。OSM 標準タイルは [OpenStreetMap タイル利用ポリシー](https://operations.osmfoundation.org/policies/tiles/)、地理院タイルは [国土地理院の利用規約](https://maps.gsi.go.jp/development/ichiran.html) に従ってください。いずれもボランティア／公共提供のリソースです。
+## 開発者向け
 
-- **過剰・不適切な利用があった場合、予告なくアクセスがブロックされることがあります。** 多人数で同時に大量のタイルを読み込むような使い方（授業での一斉アクセスなど）は、サービスを劣化させ、ブロックの対象となり得ます。
-- 本拡張は出典表示・タイルのキャッシュなどポリシー上の要件を満たすように作られていますが、**安定運用・大規模利用が必要な場合は、商用タイルプロバイダ（要APIキー）や自前のタイルサーバーの利用を検討してください。**
+このリポジトリでコードを開発・公開するための手順です。
 
-### ⚠️ 地名検索（`() の地図を表示する`）について
-
-`() の地図を表示する` ブロックは [OpenStreetMap Nominatim](https://nominatim.openstreetmap.org/) で地名を緯度経度に変換しています。[Nominatim 利用ポリシー](https://operations.osmfoundation.org/policies/nominatim/) により **毎秒1リクエストまで・一括/大量検索は禁止** です。多人数での一斉検索（授業など）はブロック対象になり得ます。安定運用が必要な場合は商用ジオコーダ（要APIキー）の利用を検討してください。
-
-## ✨ What You Can Do With This Extension
-
-Play [Example Project](https://xcratch.github.io/editor/#https://asondemita.github.io/xcx-map/projects/example.sb3) to look at what you can do with "地図" extension. 
-<iframe src="https://xcratch.github.io/editor/player#https://asondemita.github.io/xcx-map/projects/example.sb3" width="540px" height="460px"></iframe>
-
-
-## How to Use in Xcratch
-
-This extension can be used with other extension in [Xcratch](https://xcratch.github.io/). 
-1. Open [Xcratch Editor](https://xcratch.github.io/editor)
-2. Click 'Add Extension' button
-3. Select 'Extension Loader' extension
-4. Type the module URL in the input field 
-```
-https://asondemita.github.io/xcx-map/dist/map.mjs
-```
-5. Click 'OK' button
-6. Now you can use the blocks of this extension
-
-
-## Development
-
-### Install Dependencies
+### 必要なものをインストール
 
 ```sh
 npm install
 ```
 
-### Setup Development Environment
+### 開発環境の準備
 
-Change ```vmSrcOrg``` to your local ```scratch-vm``` directory in ```./scripts/setup-dev.js``` then run setup-dev script to setup development environment.
+`./scripts/setup-dev.js` の `vmSrcOrg` を、自分の `scratch-vm` のフォルダに合わせてから実行します。
 
 ```sh
 npm run setup-dev
 ```
 
-### Install xcratch-skills via APM
-
-Install [APM (Agent Package Manager)](https://github.com/microsoft/apm) and run:
+### ビルド（モジュールにまとめる）
 
 ```sh
-apm install --target copilot
+npm run build      # 1回だけビルド
+npm run watch      # 変更を見張って自動でビルド
 ```
 
-This automatically configures the skills across your agent clients. Once installed, you can use natural-language trigger phrases such as:
-
-| Trigger phrase | Skill invoked |
-|---|---|
-| `xcratch-create`, `scaffold extension` | `xcratch-extension-create` — scaffold a new extension repo and set up the dev environment |
-| `breakpoints not hit`, `debug on dev-server` | `xcratch-extension-debug` — fix source maps and local HTTPS issues |
-| `verify extension loads`, `check console errors` | `xcratch-extension-debug-auto` — autonomously navigate to the editor and inspect the loaded extension |
-| `add to stretch3`, `stretch3-install` | `xcratch-extension-stretch3` — generate the stretch3 install script and entry files |
-
-### Bundle into a Module
-
-Run build script to bundle this extension into a module file which could be loaded on Xcratch.
-
-```sh
-npm run build
-```
-
-### Watch and Bundle
-
-Run watch script to watch the changes of source files and bundle automatically.
-
-```sh
-npm run watch
-```
-
-### Test
-
-Run test script to test this extension.
+### テスト
 
 ```sh
 npm run test
 ```
 
-### Versioning and Deployment
+### バージョンアップと公開
 
-This project uses npm version commands and GitHub Actions for versioning and deployment.
-
-#### Create a New Version
-
-Use npm version command to update the version number. This will automatically:
-1. Update version in `package.json`
-2. Run the build script
-3. Create version-specific build files in `dist/{version}/`
-4. Update `dist/versions.json` with the new version info
-5. Create a git commit and tag
+`npm version patch`（または `minor` / `major`）でバージョンを上げると、ビルド・`dist/{バージョン}/` の作成・`dist/versions.json` の更新・コミット・タグ付けが自動で行われます。
+そのあとタグ（`vX.Y.Z`）を push すると、GitHub Actions が `dist/`・`projects/`・`README.md` を GitHub Pages に公開します。
 
 ```sh
-# Patch version (1.3.0 → 1.3.1)
-npm version patch
-
-# Minor version (1.3.1 → 1.4.0)
-npm version minor
-
-# Major version (1.4.0 → 2.0.0)
-npm version major
+git push origin vX.Y.Z
 ```
 
-#### Deploy to GitHub Pages
+## ホームページ
 
-After creating a new version, push the tag to trigger automatic deployment:
+[https://asondemita.github.io/xcx-map/](https://asondemita.github.io/xcx-map/)
 
-```sh
-# Push the version tag
-git push origin v1.4.0
+## 貢献（Contributing）
 
-# Or push all tags
-git push --tags
-```
-
-The GitHub Actions workflow will:
-1. Build the extension
-2. Deploy `dist/`, `projects/`, and `README.md` to GitHub Pages
-
-You can also manually trigger deployment from the Actions tab in GitHub.
-
-#### Version Information
-
-All build versions are recorded in `dist/versions.json`:
-
-```json
-{
-  "extensionId": "map",
-  "latest": "1.0.0",
-  "versions": [
-    {
-      "version": "1.0.0",
-      "buildDate": "2025-10-19T12:34:56.789Z",
-      "module": "1.0.0/map.mjs"
-    }
-  ]
-}
-```
-
-
-## 🏠 Home Page
-
-Open this page from [https://asondemita.github.io/xcx-map/](https://asondemita.github.io/xcx-map/)
-
-
-## 🤝 Contributing
-
-Contributions, issues and feature requests are welcome!<br />Feel free to check [issues page](https://github.com/asondemita/xcx-map/issues). 
+バグ報告・機能のリクエストを歓迎します。[Issues ページ](https://github.com/asondemita/xcx-map/issues) からお気軽にどうぞ。
