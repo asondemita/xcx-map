@@ -115,6 +115,40 @@ describe("blockClass", () => {
         });
     });
 
+    test("setPinComment truncates to 6 chars + ... on the last pin", () => {
+        const block = new blockClass(runtime);
+        block._points = [{ lat: 0, lng: 0 }, { lat: 1, lng: 1 }];
+        block.setPinComment({ COMMENT: "あいうえおかきく" });
+        expect(block._points[1].comment).toBe("あいうえおか...");
+        expect(block._points[0].comment).toBeUndefined();
+        // short text is kept as-is
+        block.setPinComment({ COMMENT: "やあ" });
+        expect(block._points[1].comment).toBe("やあ");
+        // empty pins -> no throw
+        block._points = [];
+        expect(() => block.setPinComment({ COMMENT: "x" })).not.toThrow();
+    });
+
+    test("a pin with a comment draws its bubble text", () => {
+        const block = new blockClass(runtime);
+        const texts = [];
+        const ctx = new Proxy({}, {
+            get: (_t, prop) => {
+                if (prop === "fillText") return t => texts.push(t);
+                if (prop === "measureText") return () => ({ width: 20 });
+                return () => {};
+            }
+        });
+        block.centerLat = 35.681236;
+        block.centerLng = 139.767125;
+        block.zoom = 13;
+        const left = block._lngToWorldX(block.centerLng, block.zoom) - 240;
+        const top = block._latToWorldY(block.centerLat, block.zoom) - 180;
+        block._points = [{ lat: 35.681236, lng: 139.767125, color: "#e53935", comment: "ここ" }];
+        block._drawMarkers(ctx, block.zoom, left, top);
+        expect(texts).toContain("ここ");
+    });
+
     test("pinDistance measures between two pins (1-based), '' if invalid", () => {
         const block = new blockClass(runtime);
         block._points = [

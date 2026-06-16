@@ -735,6 +735,7 @@ var en = {
 	"map.panVertical": "move map [PIXELS] pixels vertically",
 	"map.setOpacity": "set map transparency to [OPACITY]",
 	"map.addCenterPin": "drop a [COLOR] pin at the map center",
+	"map.setPinComment": "add a [COMMENT] speech bubble to the last pin",
 	"map.clearPoints": "clear all pins",
 	"map.fitToPoints": "fit map so all pins are visible",
 	"map.setPinNumber": "turn pin numbers [MODE]",
@@ -768,6 +769,7 @@ var ja = {
 	"map.panVertical": "地図を縦に [PIXELS] ピクセル移動する",
 	"map.setOpacity": "地図の透明度を [OPACITY] にする",
 	"map.addCenterPin": "地図の中心に [COLOR] のピンを立てる",
+	"map.setPinComment": "直前のピンに [COMMENT] のふきだしをつける",
 	"map.clearPoints": "ピンを全て消す",
 	"map.fitToPoints": "全てのピンが見えるように地図を調整する",
 	"map.setPinNumber": "ピンを番号 [MODE] にする",
@@ -804,6 +806,7 @@ var translations = {
 	"map.panVertical": "ちずをたてに [PIXELS] ピクセルうごかす",
 	"map.setOpacity": "ちずのとうめいどを [OPACITY] にする",
 	"map.addCenterPin": "ちずのちゅうしんに [COLOR] のピンをたてる",
+	"map.setPinComment": "ちょくぜんのピンに [COMMENT] のふきだしをつける",
 	"map.clearPoints": "ピンをすべてけす",
 	"map.fitToPoints": "すべてのピンがみえるようにちずをちょうせいする",
 	"map.setPinNumber": "ピンをばんごう [MODE] にする",
@@ -1094,6 +1097,20 @@ var ExtensionBlocks = /*#__PURE__*/function () {
               type: ArgumentType.STRING,
               menu: 'pinColorMenu',
               defaultValue: '#e53935'
+            }
+          }
+        }, {
+          opcode: 'setPinComment',
+          blockType: BlockType.COMMAND,
+          text: formatMessage({
+            id: 'map.setPinComment',
+            default: '直前のピンに [COMMENT] のふきだしをつける',
+            description: 'attach a speech bubble to the most recent pin'
+          }),
+          arguments: {
+            COMMENT: {
+              type: ArgumentType.STRING,
+              defaultValue: ''
             }
           }
         }, {
@@ -1494,10 +1511,11 @@ var ExtensionBlocks = /*#__PURE__*/function () {
      * @param {number} y - stage y of the pin tip.
      * @param {string} color - fill color of the pin head.
      * @param {?string} label - order number to draw on the head, or null.
+     * @param {?string} comment - speech-bubble text, or empty/undefined.
      */
   }, {
     key: "_drawPin",
-    value: function _drawPin(ctx, x, y, color, label) {
+    value: function _drawPin(ctx, x, y, color, label, comment) {
       var headR = 6;
       var headCy = y - 15;
       // Left/right where the tail meets the head.
@@ -1544,6 +1562,56 @@ var ExtensionBlocks = /*#__PURE__*/function () {
         ctx.fill();
       }
       ctx.restore();
+      if (comment) {
+        this._drawBubble(ctx, x, headCy - headR, y, comment);
+      }
+    }
+
+    /**
+     * Draw a small speech bubble anchored to a pin.
+     * @param {CanvasRenderingContext2D} ctx - drawing context.
+     * @param {number} x - pin x (bubble points here).
+     * @param {number} topAnchor - y just above the pin head (bubble above).
+     * @param {number} bottomAnchor - y at the pin tip (bubble below if no room).
+     * @param {string} text - bubble text.
+     */
+  }, {
+    key: "_drawBubble",
+    value: function _drawBubble(ctx, x, topAnchor, bottomAnchor, text) {
+      ctx.save();
+      ctx.font = '9px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      var tail = 4;
+      var bw = Math.ceil(ctx.measureText(text).width + 8);
+      var bh = 14;
+      var bx = x - bw / 2;
+      bx = Math.max(2, Math.min(STAGE_WIDTH - bw - 2, bx));
+      var above = topAnchor - tail - bh >= 2;
+      var by = above ? topAnchor - tail - bh : bottomAnchor + tail;
+      var tx = Math.max(bx + 4, Math.min(bx + bw - 4, x));
+      var baseY = above ? by + bh : by;
+      var tipY = above ? by + bh + tail : by - tail;
+      ctx.lineWidth = 1;
+      ctx.strokeStyle = 'rgba(0, 0, 0, 0.5)';
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.95)';
+      ctx.fillRect(bx, by, bw, bh);
+      ctx.strokeRect(bx, by, bw, bh);
+      // Tail: filled white (hides the box edge at its mouth), then outline.
+      ctx.beginPath();
+      ctx.moveTo(tx - 3, baseY);
+      ctx.lineTo(tx + 3, baseY);
+      ctx.lineTo(tx, tipY);
+      ctx.closePath();
+      ctx.fill();
+      ctx.beginPath();
+      ctx.moveTo(tx - 3, baseY);
+      ctx.lineTo(tx, tipY);
+      ctx.lineTo(tx + 3, baseY);
+      ctx.stroke();
+      ctx.fillStyle = '#222222';
+      ctx.fillText(text, bx + bw / 2, by + bh / 2);
+      ctx.restore();
     }
 
     /**
@@ -1565,7 +1633,7 @@ var ExtensionBlocks = /*#__PURE__*/function () {
           continue;
         }
         var label = this._pinNumbered ? String(i + 1) : null;
-        this._drawPin(ctx, px, py, p.color, label);
+        this._drawPin(ctx, px, py, p.color, label, p.comment);
       }
     }
 
@@ -1767,6 +1835,19 @@ var ExtensionBlocks = /*#__PURE__*/function () {
         lng: this.centerLng,
         color: Cast.toString(args.COLOR)
       });
+      return this._redraw();
+    }
+
+    // Attach a short speech bubble to the most recent pin (max 6 chars + …).
+  }, {
+    key: "setPinComment",
+    value: function setPinComment(args) {
+      if (this._points.length === 0) {
+        return;
+      }
+      var chars = Array.from(Cast.toString(args.COMMENT));
+      var text = chars.length > 6 ? "".concat(chars.slice(0, 6).join(''), "...") : chars.join('');
+      this._points[this._points.length - 1].comment = text;
       return this._redraw();
     }
 
