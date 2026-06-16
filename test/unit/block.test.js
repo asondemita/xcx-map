@@ -36,33 +36,41 @@ describe("blockClass", () => {
 
     test("zoom is clamped per tile type", () => {
         const block = new blockClass(runtime);
-        // default is GSI pale -> max zoom 18
-        block.setZoom({ ZOOM: 99 });
-        expect(block.zoom).toBe(18);
-        block.setZoom({ ZOOM: -5 });
-        expect(block.zoom).toBe(0);
-        // OSM standard -> max zoom 19
-        block.setMapType({ TYPE: "osm" });
+        // default is OSM standard -> max zoom 19
         block.setZoom({ ZOOM: 99 });
         expect(block.zoom).toBe(19);
+        block.setZoom({ ZOOM: -5 });
+        expect(block.zoom).toBe(0);
+        // GSI pale -> max zoom 18
+        block.setMapType({ TYPE: "pale" });
+        block.setZoom({ ZOOM: 99 });
+        expect(block.zoom).toBe(18);
     });
 
-    test("default tile type is GSI pale and switches to OSM", () => {
+    test("default tile type is OSM standard and switches to GSI pale", () => {
         const block = new blockClass(runtime);
-        expect(block._mapType).toBe("pale");
-        expect(block._tileConfig().base).toContain("gsi.go.jp");
-        block.setMapType({ TYPE: "osm" });
         expect(block._mapType).toBe("osm");
         expect(block._tileConfig().base).toContain("openstreetmap.org");
+        block.setMapType({ TYPE: "pale" });
+        expect(block._mapType).toBe("pale");
+        expect(block._tileConfig().base).toContain("gsi.go.jp");
         // an unknown value is ignored
         block.setMapType({ TYPE: "bogus" });
-        expect(block._mapType).toBe("osm");
+        expect(block._mapType).toBe("pale");
     });
 
-    test("map type menu lists pale and standard", () => {
+    test("map type menu lists standard first, then pale", () => {
         const block = new blockClass(runtime);
         const values = block.getMapTypeMenu().map(i => i.value);
-        expect(values).toEqual(["pale", "osm"]);
+        expect(values).toEqual(["osm", "pale"]);
+    });
+
+    test("map center latitude/longitude reporters return the center", () => {
+        const block = new blockClass(runtime);
+        block.centerLat = 35.5;
+        block.centerLng = 139.5;
+        expect(block.mapLat()).toBe(35.5);
+        expect(block.mapLng()).toBe(139.5);
     });
 
     test("panning moves the center east and north for positive pixels", () => {

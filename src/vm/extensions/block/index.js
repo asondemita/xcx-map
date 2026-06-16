@@ -66,7 +66,7 @@ const TILE_TYPES = {
         attribution: '© OpenStreetMap contributors'
     }
 };
-const DEFAULT_TILE_TYPE = 'pale';
+const DEFAULT_TILE_TYPE = 'osm';
 
 /**
  * Limit of the Web Mercator projection in degrees.
@@ -216,7 +216,7 @@ class ExtensionBlocks {
                         TYPE: {
                             type: ArgumentType.STRING,
                             menu: 'mapTypeMenu',
-                            defaultValue: 'pale'
+                            defaultValue: 'osm'
                         }
                     }
                 },
@@ -334,6 +334,24 @@ class ExtensionBlocks {
                 },
                 '---',
                 {
+                    opcode: 'mapLat',
+                    blockType: BlockType.REPORTER,
+                    text: formatMessage({
+                        id: 'map.mapLat',
+                        default: '緯度',
+                        description: 'latitude of the map center'
+                    })
+                },
+                {
+                    opcode: 'mapLng',
+                    blockType: BlockType.REPORTER,
+                    text: formatMessage({
+                        id: 'map.mapLng',
+                        default: '経度',
+                        description: 'longitude of the map center'
+                    })
+                },
+                {
                     opcode: 'showCurrentLocation',
                     blockType: BlockType.COMMAND,
                     text: formatMessage({
@@ -377,12 +395,12 @@ class ExtensionBlocks {
     getMapTypeMenu () {
         return [
             {
-                text: formatMessage({id: 'map.mapType.pale', default: '淡色', description: 'GSI pale map'}),
-                value: 'pale'
-            },
-            {
                 text: formatMessage({id: 'map.mapType.osm', default: '標準', description: 'OSM standard map'}),
                 value: 'osm'
+            },
+            {
+                text: formatMessage({id: 'map.mapType.pale', default: '淡色', description: 'GSI pale map'}),
+                value: 'pale'
             }
         ];
     }
@@ -737,6 +755,14 @@ class ExtensionBlocks {
         if (!this._ensureSkin()) return;
         this.runtime.renderer.updateDrawableEffect(this._drawableId, 'ghost', this._opacity);
         this.runtime.requestRedraw();
+    }
+
+    mapLat () {
+        return this.centerLat;
+    }
+
+    mapLng () {
+        return this.centerLng;
     }
 
     // ---- Blocks: fit to points ----
