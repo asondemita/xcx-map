@@ -181,6 +181,18 @@ class ExtensionBlocks {
                     }
                 },
                 {
+                    opcode: 'showMapByKeyword',
+                    blockType: BlockType.COMMAND,
+                    text: formatMessage({
+                        id: 'map.showMapByKeyword',
+                        default: '[KEYWORD] の地図を表示する',
+                        description: 'search a place name and show its map'
+                    }),
+                    arguments: {
+                        KEYWORD: {type: ArgumentType.STRING, defaultValue: '東京タワー'}
+                    }
+                },
+                {
                     opcode: 'setZoom',
                     blockType: BlockType.COMMAND,
                     text: formatMessage({
@@ -585,6 +597,42 @@ class ExtensionBlocks {
         return this._redraw();
     }
 
+    /**
+     * Geocode a free keyword with OpenStreetMap Nominatim and show its map,
+     * fitting the result's bounding box. Subject to the Nominatim usage
+     * policy (max ~1 request/second, no bulk use).
+     * @param {object} args - block arguments.
+     * @returns {Promise|undefined} - resolves when the map has been redrawn.
+     */
+    showMapByKeyword (args) {
+        const keyword = Cast.toString(args.KEYWORD).trim();
+        if (keyword === '' || typeof fetch === 'undefined') {
+            return;
+        }
+        const url = 'https://nominatim.openstreetmap.org/search' +
+            `?q=${encodeURIComponent(keyword)}&format=json&limit=1&accept-language=ja`;
+        return fetch(url, {headers: {Accept: 'application/json'}})
+            .then(response => response.json())
+            .then(data => {
+                if (!Array.isArray(data) || data.length === 0) {
+                    return;
+                }
+                const result = data[0];
+                const box = result.boundingbox; // [south, north, west, east]
+                if (box && box.length === 4) {
+                    this._fitToBounds(
+                        Number(box[0]), Number(box[1]), Number(box[2]), Number(box[3])
+                    );
+                } else {
+                    this.centerLat = Number(result.lat);
+                    this.centerLng = Number(result.lon);
+                    this.zoom = this._clampZoom(15);
+                }
+                return this._redraw();
+            })
+            .catch(() => {});
+    }
+
     setZoom (args) {
         this.zoom = this._clampZoom(Cast.toNumber(args.ZOOM));
         return this._redraw();
@@ -691,6 +739,43 @@ class ExtensionBlocks {
         this.centerLat = this._worldYToLat((b.minY + b.maxY) / 2, fitZoom);
         this.zoom = fitZoom;
         return this._redraw();
+    }
+
+    /**
+     * Center and zoom the map to fit a lat/lng bounding box.
+     * @param {number} south - southern latitude.
+     * @param {number} north - northern latitude.
+     * @param {number} west - western longitude.
+     * @param {number} east - eastern longitude.
+     */
+    _fitToBounds (south, north, west, east) {
+        const PADDING = 24;
+        const usableWidth = STAGE_WIDTH - (PADDING * 2);
+        const usableHeight = STAGE_HEIGHT - (PADDING * 2);
+        const boundsAt = zoom => {
+            const x1 = this._lngToWorldX(west, zoom);
+            const x2 = this._lngToWorldX(east, zoom);
+            const y1 = this._latToWorldY(north, zoom);
+            const y2 = this._latToWorldY(south, zoom);
+            return {
+                minX: Math.min(x1, x2),
+                maxX: Math.max(x1, x2),
+                minY: Math.min(y1, y2),
+                maxY: Math.max(y1, y2)
+            };
+        };
+        let fitZoom = MIN_ZOOM;
+        for (let z = MAX_ZOOM; z >= MIN_ZOOM; z--) {
+            const b = boundsAt(z);
+            if ((b.maxX - b.minX) <= usableWidth && (b.maxY - b.minY) <= usableHeight) {
+                fitZoom = z;
+                break;
+            }
+        }
+        const b = boundsAt(fitZoom);
+        this.centerLng = this._worldXToLng((b.minX + b.maxX) / 2, fitZoom);
+        this.centerLat = this._worldYToLat((b.minY + b.maxY) / 2, fitZoom);
+        this.zoom = fitZoom;
     }
 
     // ---- Blocks: current location / distance ----

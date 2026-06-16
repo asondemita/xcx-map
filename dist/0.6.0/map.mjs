@@ -725,6 +725,7 @@ var Cast = /*@__PURE__*/getDefaultExportFromCjs(castExports);
 var en = {
 	"map.name": "Map",
 	"map.showMapAt": "show map at latitude [LAT] longitude [LNG] zoom [ZOOM]",
+	"map.showMapByKeyword": "show map of [KEYWORD]",
 	"map.setZoom": "set zoom to [ZOOM]",
 	"map.changeZoom": "change zoom by [ZOOM]",
 	"map.panHorizontal": "move map [PIXELS] pixels horizontally",
@@ -748,6 +749,7 @@ var en = {
 var ja = {
 	"map.name": "地図",
 	"map.showMapAt": "緯度 [LAT] 経度 [LNG] ズーム [ZOOM] の地図を表示する",
+	"map.showMapByKeyword": "[KEYWORD] の地図を表示する",
 	"map.setZoom": "ズームを [ZOOM] にする",
 	"map.changeZoom": "ズームを [ZOOM] ずつ変える",
 	"map.panHorizontal": "地図を横に [PIXELS] ピクセル移動する",
@@ -774,6 +776,7 @@ var translations = {
 	"ja-Hira": {
 	"map.name": "ちず",
 	"map.showMapAt": "いど [LAT] けいど [LNG] ズーム [ZOOM] のちずをひょうじする",
+	"map.showMapByKeyword": "[KEYWORD] のちずをひょうじする",
 	"map.setZoom": "ズームを [ZOOM] にする",
 	"map.changeZoom": "ズームを [ZOOM] ずつかえる",
 	"map.panHorizontal": "ちずをよこに [PIXELS] ピクセルうごかす",
@@ -938,6 +941,20 @@ var ExtensionBlocks = /*#__PURE__*/function () {
             ZOOM: {
               type: ArgumentType.NUMBER,
               defaultValue: 13
+            }
+          }
+        }, {
+          opcode: 'showMapByKeyword',
+          blockType: BlockType.COMMAND,
+          text: formatMessage({
+            id: 'map.showMapByKeyword',
+            default: '[KEYWORD] の地図を表示する',
+            description: 'search a place name and show its map'
+          }),
+          arguments: {
+            KEYWORD: {
+              type: ArgumentType.STRING,
+              defaultValue: '東京タワー'
             }
           }
         }, {
@@ -1450,6 +1467,45 @@ var ExtensionBlocks = /*#__PURE__*/function () {
       this.zoom = this._clampZoom(Cast.toNumber(args.ZOOM));
       return this._redraw();
     }
+
+    /**
+     * Geocode a free keyword with OpenStreetMap Nominatim and show its map,
+     * fitting the result's bounding box. Subject to the Nominatim usage
+     * policy (max ~1 request/second, no bulk use).
+     * @param {object} args - block arguments.
+     * @returns {Promise|undefined} - resolves when the map has been redrawn.
+     */
+  }, {
+    key: "showMapByKeyword",
+    value: function showMapByKeyword(args) {
+      var _this2 = this;
+      var keyword = Cast.toString(args.KEYWORD).trim();
+      if (keyword === '' || typeof fetch === 'undefined') {
+        return;
+      }
+      var url = 'https://nominatim.openstreetmap.org/search' + "?q=".concat(encodeURIComponent(keyword), "&format=json&limit=1&accept-language=ja");
+      return fetch(url, {
+        headers: {
+          Accept: 'application/json'
+        }
+      }).then(function (response) {
+        return response.json();
+      }).then(function (data) {
+        if (!Array.isArray(data) || data.length === 0) {
+          return;
+        }
+        var result = data[0];
+        var box = result.boundingbox; // [south, north, west, east]
+        if (box && box.length === 4) {
+          _this2._fitToBounds(Number(box[0]), Number(box[1]), Number(box[2]), Number(box[3]));
+        } else {
+          _this2.centerLat = Number(result.lat);
+          _this2.centerLng = Number(result.lon);
+          _this2.zoom = _this2._clampZoom(15);
+        }
+        return _this2._redraw();
+      }).catch(function () {});
+    }
   }, {
     key: "setZoom",
     value: function setZoom(args) {
@@ -1530,7 +1586,7 @@ var ExtensionBlocks = /*#__PURE__*/function () {
   }, {
     key: "fitToPoints",
     value: function fitToPoints() {
-      var _this2 = this;
+      var _this3 = this;
       if (this._points.length === 0) return;
       if (this._points.length === 1) {
         this.centerLat = this._points[0].lat;
@@ -1547,13 +1603,13 @@ var ExtensionBlocks = /*#__PURE__*/function () {
         var maxX = -Infinity;
         var minY = Infinity;
         var maxY = -Infinity;
-        var _iterator3 = _createForOfIteratorHelper(_this2._points),
+        var _iterator3 = _createForOfIteratorHelper(_this3._points),
           _step3;
         try {
           for (_iterator3.s(); !(_step3 = _iterator3.n()).done;) {
             var p = _step3.value;
-            var wx = _this2._lngToWorldX(p.lng, zoom);
-            var wy = _this2._latToWorldY(p.lat, zoom);
+            var wx = _this3._lngToWorldX(p.lng, zoom);
+            var wy = _this3._latToWorldY(p.lat, zoom);
             if (wx < minX) minX = wx;
             if (wx > maxX) maxX = wx;
             if (wy < minY) minY = wy;
@@ -1587,6 +1643,46 @@ var ExtensionBlocks = /*#__PURE__*/function () {
       return this._redraw();
     }
 
+    /**
+     * Center and zoom the map to fit a lat/lng bounding box.
+     * @param {number} south - southern latitude.
+     * @param {number} north - northern latitude.
+     * @param {number} west - western longitude.
+     * @param {number} east - eastern longitude.
+     */
+  }, {
+    key: "_fitToBounds",
+    value: function _fitToBounds(south, north, west, east) {
+      var _this4 = this;
+      var PADDING = 24;
+      var usableWidth = STAGE_WIDTH - PADDING * 2;
+      var usableHeight = STAGE_HEIGHT - PADDING * 2;
+      var boundsAt = function boundsAt(zoom) {
+        var x1 = _this4._lngToWorldX(west, zoom);
+        var x2 = _this4._lngToWorldX(east, zoom);
+        var y1 = _this4._latToWorldY(north, zoom);
+        var y2 = _this4._latToWorldY(south, zoom);
+        return {
+          minX: Math.min(x1, x2),
+          maxX: Math.max(x1, x2),
+          minY: Math.min(y1, y2),
+          maxY: Math.max(y1, y2)
+        };
+      };
+      var fitZoom = MIN_ZOOM;
+      for (var z = MAX_ZOOM; z >= MIN_ZOOM; z--) {
+        var _b2 = boundsAt(z);
+        if (_b2.maxX - _b2.minX <= usableWidth && _b2.maxY - _b2.minY <= usableHeight) {
+          fitZoom = z;
+          break;
+        }
+      }
+      var b = boundsAt(fitZoom);
+      this.centerLng = this._worldXToLng((b.minX + b.maxX) / 2, fitZoom);
+      this.centerLat = this._worldYToLat((b.minY + b.maxY) / 2, fitZoom);
+      this.zoom = fitZoom;
+    }
+
     // ---- Blocks: current location / distance ----
 
     /**
@@ -1596,15 +1692,15 @@ var ExtensionBlocks = /*#__PURE__*/function () {
   }, {
     key: "showCurrentLocation",
     value: function showCurrentLocation() {
-      var _this3 = this;
+      var _this5 = this;
       if (typeof navigator === 'undefined' || !navigator.geolocation) {
         return;
       }
       return new Promise(function (resolve) {
         navigator.geolocation.getCurrentPosition(function (position) {
-          _this3.centerLat = position.coords.latitude;
-          _this3.centerLng = position.coords.longitude;
-          Promise.resolve(_this3._redraw()).then(resolve);
+          _this5.centerLat = position.coords.latitude;
+          _this5.centerLng = position.coords.longitude;
+          Promise.resolve(_this5._redraw()).then(resolve);
         }, function () {
           return resolve();
         }, {

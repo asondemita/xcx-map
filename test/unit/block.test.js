@@ -82,6 +82,22 @@ describe("blockClass", () => {
         });
     });
 
+    test("_fitToBounds centers within the given lat/lng box", () => {
+        const block = new blockClass(runtime);
+        block._fitToBounds(34, 36, 135, 140); // south, north, west, east
+        expect(block.centerLat).toBeGreaterThan(34);
+        expect(block.centerLat).toBeLessThan(36);
+        expect(block.centerLng).toBeGreaterThan(135);
+        expect(block.centerLng).toBeLessThan(140);
+        expect(block.zoom).toBeGreaterThanOrEqual(0);
+        expect(block.zoom).toBeLessThanOrEqual(19);
+    });
+
+    test("showMapByKeyword does not throw for empty keyword", () => {
+        const block = new blockClass(runtime);
+        expect(() => block.showMapByKeyword({ KEYWORD: "" })).not.toThrow();
+    });
+
     test("addCenterPin drops a pin at the current map center", () => {
         const block = new blockClass(runtime);
         block.clearPoints();
