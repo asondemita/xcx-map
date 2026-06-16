@@ -300,15 +300,28 @@ class ExtensionBlocks {
                     }
                 },
                 {
-                    opcode: 'setPinComment',
+                    opcode: 'setLastPinName',
                     blockType: BlockType.COMMAND,
                     text: formatMessage({
-                        id: 'map.setPinComment',
-                        default: '直前のピンに [COMMENT] のふきだしをつける',
-                        description: 'attach a speech bubble to the most recent pin'
+                        id: 'map.setLastPinName',
+                        default: '直前のピンの名前を [NAME] にする',
+                        description: "set the most recent pin's name"
                     }),
                     arguments: {
-                        COMMENT: {type: ArgumentType.STRING, defaultValue: ''}
+                        NAME: {type: ArgumentType.STRING, defaultValue: ''}
+                    }
+                },
+                {
+                    opcode: 'setPinName',
+                    blockType: BlockType.COMMAND,
+                    text: formatMessage({
+                        id: 'map.setPinName',
+                        default: 'ピン [NUMBER] の名前を [NAME] にする',
+                        description: "set a pin's name shown on the map"
+                    }),
+                    arguments: {
+                        NUMBER: {type: ArgumentType.NUMBER, defaultValue: 1},
+                        NAME: {type: ArgumentType.STRING, defaultValue: ''}
                     }
                 },
                 {
@@ -624,9 +637,9 @@ class ExtensionBlocks {
      * @param {number} y - stage y of the pin tip.
      * @param {string} color - fill color of the pin head.
      * @param {?string} label - order number to draw on the head, or null.
-     * @param {?string} comment - speech-bubble text, or empty/undefined.
+     * @param {?string} name - pin name shown in a bubble, or empty/undefined.
      */
-    _drawPin (ctx, x, y, color, label, comment) {
+    _drawPin (ctx, x, y, color, label, name) {
         const headR = 6;
         const headCy = y - 15;
         // Left/right where the tail meets the head.
@@ -673,8 +686,8 @@ class ExtensionBlocks {
             ctx.fill();
         }
         ctx.restore();
-        if (comment) {
-            this._drawBubble(ctx, x, headCy - headR, y, comment);
+        if (name) {
+            this._drawBubble(ctx, x, headCy - headR, y, name);
         }
     }
 
@@ -740,7 +753,7 @@ class ExtensionBlocks {
                 continue;
             }
             const label = this._pinNumbered ? String(i + 1) : null;
-            this._drawPin(ctx, px, py, p.color, label, p.comment);
+            this._drawPin(ctx, px, py, p.color, label, p.name);
         }
     }
 
@@ -909,14 +922,22 @@ class ExtensionBlocks {
         return this._redraw();
     }
 
-    // Attach a short speech bubble to the most recent pin (max 6 chars + …).
-    setPinComment (args) {
-        if (this._points.length === 0) {
+    // Set a pin's name shown on the map (max 6 chars + …; empty clears).
+    _applyPinName (point, raw) {
+        if (!point) {
             return;
         }
-        const chars = Array.from(Cast.toString(args.COMMENT));
-        const text = chars.length > 6 ? `${chars.slice(0, 6).join('')}...` : chars.join('');
-        this._points[this._points.length - 1].comment = text;
+        const chars = Array.from(Cast.toString(raw));
+        point.name = chars.length > 6 ? `${chars.slice(0, 6).join('')}...` : chars.join('');
+    }
+
+    setLastPinName (args) {
+        this._applyPinName(this._points[this._points.length - 1], args.NAME);
+        return this._redraw();
+    }
+
+    setPinName (args) {
+        this._applyPinName(this._points[Cast.toNumber(args.NUMBER) - 1], args.NAME);
         return this._redraw();
     }
 
