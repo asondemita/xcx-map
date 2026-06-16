@@ -23,6 +23,8 @@ Scratch のステージに世界の地図を表示できる [Xcratch](https://xc
 
 ▶ [サンプルプロジェクトを開いてみる](https://xcratch.github.io/editor/#https://asondemita.github.io/xcx-map/projects/example.sb3)
 
+<iframe src="https://xcratch.github.io/editor/player#https://asondemita.github.io/xcx-map/projects/example.sb3" width="540px" height="460px" allow="geolocation"></iframe>
+
 ## できること（ブロック一覧）
 
 **地図の表示**
