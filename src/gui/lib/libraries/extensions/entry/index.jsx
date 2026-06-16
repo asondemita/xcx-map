@@ -32,7 +32,7 @@ const entry = {
     insetIconURL: insetIconURL,
     get description () {
         return `${formatMessage({
-            defaultMessage: 'OpenStreetMap で地図を描きます。APIキー不要・どのドメインでも使えます。',
+            defaultMessage: 'OpenStreetMap で地図を描きます。',
             description: 'Description for this extension',
             id: 'map.entry.description'
         })} (${version})`;
