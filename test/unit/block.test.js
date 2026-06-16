@@ -258,6 +258,20 @@ describe("blockClass", () => {
         expect(() => block.showMapByKeyword({ KEYWORD: "" })).not.toThrow();
     });
 
+    test("showPinMap centers on the given pin, no-op if missing", () => {
+        const block = new blockClass(runtime);
+        block._points = [
+            { lat: 10, lng: 20 },
+            { lat: 35.5, lng: 139.5 }
+        ];
+        block.showPinMap({ NUMBER: 2 });
+        expect(block.centerLat).toBe(35.5);
+        expect(block.centerLng).toBe(139.5);
+        expect(() => block.showPinMap({ NUMBER: 9 })).not.toThrow();
+        // unchanged after the invalid call
+        expect(block.centerLat).toBe(35.5);
+    });
+
     test("addCenterPin drops a pin at the current map center", () => {
         const block = new blockClass(runtime);
         block.clearPoints();

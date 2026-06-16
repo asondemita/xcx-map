@@ -204,6 +204,18 @@ class ExtensionBlocks {
                     }
                 },
                 {
+                    opcode: 'showPinMap',
+                    blockType: BlockType.COMMAND,
+                    text: formatMessage({
+                        id: 'map.showPinMap',
+                        default: 'ピン番号 [NUMBER] の地図を表示する',
+                        description: 'center the map on a pin'
+                    }),
+                    arguments: {
+                        NUMBER: {type: ArgumentType.NUMBER, defaultValue: 1}
+                    }
+                },
+                {
                     opcode: 'showMapAt',
                     blockType: BlockType.COMMAND,
                     text: formatMessage({
@@ -259,15 +271,6 @@ class ExtensionBlocks {
                     }
                 },
                 {
-                    opcode: 'fitToPoints',
-                    blockType: BlockType.COMMAND,
-                    text: formatMessage({
-                        id: 'map.fitToPoints',
-                        default: '全てのピンが見えるように地図を調整する',
-                        description: 'move and zoom the map so all pins are visible'
-                    })
-                },
-                {
                     opcode: 'setPinNumber',
                     blockType: BlockType.COMMAND,
                     text: formatMessage({
@@ -316,6 +319,15 @@ class ExtensionBlocks {
                     arguments: {
                         ZOOM: {type: ArgumentType.NUMBER, defaultValue: 1}
                     }
+                },
+                {
+                    opcode: 'fitToPoints',
+                    blockType: BlockType.COMMAND,
+                    text: formatMessage({
+                        id: 'map.fitToPoints',
+                        default: '全てのピンが見えるよう調整する',
+                        description: 'move and zoom the map so all pins are visible'
+                    })
                 },
                 {
                     opcode: 'panHorizontal',
@@ -823,6 +835,17 @@ class ExtensionBlocks {
     showMapAt (args) {
         this.centerLat = Cast.toNumber(args.LAT);
         this.centerLng = Cast.toNumber(args.LNG);
+        return this._redraw();
+    }
+
+    // Center the map on pin NUMBER (1-based); keeps the current zoom.
+    showPinMap (args) {
+        const pin = this._points[Cast.toNumber(args.NUMBER) - 1];
+        if (!pin) {
+            return;
+        }
+        this.centerLat = pin.lat;
+        this.centerLng = pin.lng;
         return this._redraw();
     }
 
