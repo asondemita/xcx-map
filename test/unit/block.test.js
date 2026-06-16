@@ -101,15 +101,42 @@ describe("blockClass", () => {
         }
     });
 
-    test("addPoint stores latitude, longitude and color", () => {
+    test("addCenterPin stores the current center with its color", () => {
         const block = new blockClass(runtime);
         block.clearPoints();
-        block.addPoint({ LAT: 34.702485, LNG: 135.495951, COLOR: "#00ff00" });
+        block.centerLat = 34.702485;
+        block.centerLng = 135.495951;
+        block.addCenterPin({ COLOR: "#00ff00" });
         expect(block._points).toHaveLength(1);
         expect(block._points[0]).toMatchObject({
             lat: 34.702485,
             lng: 135.495951,
             color: "#00ff00"
+        });
+    });
+
+    test("pinDistance measures between two pins (1-based), '' if invalid", () => {
+        const block = new blockClass(runtime);
+        block._points = [
+            { lat: 35.681236, lng: 139.767125 }, // pin 1 Tokyo
+            { lat: 34.702485, lng: 135.495951 }  // pin 2 Osaka
+        ];
+        const km = block.pinDistance({ FROM: 1, TO: 2 });
+        expect(km).toBeGreaterThan(390);
+        expect(km).toBeLessThan(420);
+        expect(block.pinDistance({ FROM: 1, TO: 5 })).toBe("");
+    });
+
+    test("scrollBetweenPins no-ops for invalid pins and ends at the target", () => {
+        const block = new blockClass(runtime);
+        block._points = [
+            { lat: 10, lng: 20 },
+            { lat: 30, lng: 40 }
+        ];
+        expect(block.scrollBetweenPins({ FROM: 1, TO: 9 })).toBeUndefined();
+        return block.scrollBetweenPins({ FROM: 1, TO: 2 }).then(() => {
+            expect(block.centerLat).toBeCloseTo(30, 6);
+            expect(block.centerLng).toBeCloseTo(40, 6);
         });
     });
 
@@ -183,8 +210,7 @@ describe("blockClass", () => {
             { LAT: 34.702485, LNG: 135.495951 }, // Osaka
             { LAT: 43.068661, LNG: 141.350755 }  // Sapporo
         ];
-        block.clearPoints();
-        for (const p of points) block.addPoint(p);
+        block._points = points.map(p => ({ lat: p.LAT, lng: p.LNG }));
         block.fitToPoints();
         for (const p of points) {
             expect(stageX(block, p.LNG)).toBeGreaterThanOrEqual(0);
@@ -196,8 +222,7 @@ describe("blockClass", () => {
 
     test("fit to a single point centers on it", () => {
         const block = new blockClass(runtime);
-        block.clearPoints();
-        block.addPoint({ LAT: 34.702485, LNG: 135.495951 });
+        block._points = [{ lat: 34.702485, lng: 135.495951 }];
         block.fitToPoints();
         expect(block.centerLat).toBeCloseTo(34.702485, 5);
         expect(block.centerLng).toBeCloseTo(135.495951, 5);

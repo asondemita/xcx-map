@@ -284,24 +284,6 @@ class ExtensionBlocks {
                     }
                 },
                 {
-                    opcode: 'addPoint',
-                    blockType: BlockType.COMMAND,
-                    text: formatMessage({
-                        id: 'map.addPoint',
-                        default: '緯度 [LAT] 経度 [LNG] に [COLOR] のピンを立てる',
-                        description: 'drop a pin at a point'
-                    }),
-                    arguments: {
-                        LAT: {type: ArgumentType.NUMBER, defaultValue: 35.681236},
-                        LNG: {type: ArgumentType.NUMBER, defaultValue: 139.767125},
-                        COLOR: {
-                            type: ArgumentType.STRING,
-                            menu: 'pinColorMenu',
-                            defaultValue: '#e53935'
-                        }
-                    }
-                },
-                {
                     opcode: 'addCenterPin',
                     blockType: BlockType.COMMAND,
                     text: formatMessage({
@@ -349,6 +331,32 @@ class ExtensionBlocks {
                             menu: 'pinNumberMenu',
                             defaultValue: 'off'
                         }
+                    }
+                },
+                {
+                    opcode: 'scrollBetweenPins',
+                    blockType: BlockType.COMMAND,
+                    text: formatMessage({
+                        id: 'map.scrollBetweenPins',
+                        default: 'ピン [FROM] からピン [TO] へスクロール',
+                        description: 'scroll the map from one pin to another'
+                    }),
+                    arguments: {
+                        FROM: {type: ArgumentType.NUMBER, defaultValue: 1},
+                        TO: {type: ArgumentType.NUMBER, defaultValue: 2}
+                    }
+                },
+                {
+                    opcode: 'pinDistance',
+                    blockType: BlockType.REPORTER,
+                    text: formatMessage({
+                        id: 'map.pinDistance',
+                        default: 'ピン [FROM] からピン [TO] までの距離(km)',
+                        description: 'distance between two pins in kilometers'
+                    }),
+                    arguments: {
+                        FROM: {type: ArgumentType.NUMBER, defaultValue: 1},
+                        TO: {type: ArgumentType.NUMBER, defaultValue: 2}
                     }
                 },
                 '---',
@@ -831,15 +839,6 @@ class ExtensionBlocks {
         return this._redraw();
     }
 
-    addPoint (args) {
-        this._points.push({
-            lat: Cast.toNumber(args.LAT),
-            lng: Cast.toNumber(args.LNG),
-            color: Cast.toString(args.COLOR)
-        });
-        return this._redraw();
-    }
-
     addCenterPin (args) {
         this._points.push({
             lat: this.centerLat,
@@ -958,11 +957,15 @@ class ExtensionBlocks {
         });
     }
 
-    distance (args) {
-        const lat1 = Cast.toNumber(args.LAT1);
-        const lng1 = Cast.toNumber(args.LNG1);
-        const lat2 = Cast.toNumber(args.LAT2);
-        const lng2 = Cast.toNumber(args.LNG2);
+    /**
+     * Great-circle distance between two points in kilometers (haversine).
+     * @param {number} lat1 - latitude of point 1.
+     * @param {number} lng1 - longitude of point 1.
+     * @param {number} lat2 - latitude of point 2.
+     * @param {number} lng2 - longitude of point 2.
+     * @returns {number} - distance in km, rounded to 3 decimals.
+     */
+    _haversineKm (lat1, lng1, lat2, lng2) {
         const earthRadiusKm = 6371;
         const toRad = deg => deg * Math.PI / 180;
         const dLat = toRad(lat2 - lat1);
@@ -972,6 +975,52 @@ class ExtensionBlocks {
                 Math.sin(dLng / 2) * Math.sin(dLng / 2));
         const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
         return Math.round(earthRadiusKm * c * 1000) / 1000;
+    }
+
+    distance (args) {
+        return this._haversineKm(
+            Cast.toNumber(args.LAT1), Cast.toNumber(args.LNG1),
+            Cast.toNumber(args.LAT2), Cast.toNumber(args.LNG2)
+        );
+    }
+
+    /**
+     * @param {object} args - block arguments with 1-based FROM/TO pin numbers.
+     * @returns {number|string} - km between the two pins, or '' if invalid.
+     */
+    pinDistance (args) {
+        const from = this._points[Cast.toNumber(args.FROM) - 1];
+        const to = this._points[Cast.toNumber(args.TO) - 1];
+        if (!from || !to) {
+            return '';
+        }
+        return this._haversineKm(from.lat, from.lng, to.lat, to.lng);
+    }
+
+    /**
+     * Smoothly scroll the map center from one pin to another (keeps zoom).
+     * @param {object} args - block arguments with 1-based FROM/TO pin numbers.
+     * @returns {Promise|undefined} - resolves when the scroll finishes.
+     */
+    scrollBetweenPins (args) {
+        const from = this._points[Cast.toNumber(args.FROM) - 1];
+        const to = this._points[Cast.toNumber(args.TO) - 1];
+        if (!from || !to) {
+            return;
+        }
+        const steps = 24;
+        const delayMs = 30;
+        const moveTo = t => {
+            this.centerLat = from.lat + ((to.lat - from.lat) * t);
+            this.centerLng = from.lng + ((to.lng - from.lng) * t);
+            return Promise.resolve(this._redraw());
+        };
+        const animate = i => moveTo(i / steps).then(() => {
+            if (i >= steps) return;
+            return new Promise(resolve => setTimeout(resolve, delayMs))
+                .then(() => animate(i + 1));
+        });
+        return animate(0);
     }
 }
 
