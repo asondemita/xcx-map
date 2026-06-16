@@ -82,6 +82,20 @@ describe("blockClass", () => {
         });
     });
 
+    test("addCenterPin drops a pin at the current map center", () => {
+        const block = new blockClass(runtime);
+        block.clearPoints();
+        block.centerLat = 35.0;
+        block.centerLng = 139.0;
+        block.addCenterPin({ COLOR: "#1e88e5" });
+        expect(block._points).toHaveLength(1);
+        expect(block._points[0]).toMatchObject({
+            lat: 35.0,
+            lng: 139.0,
+            color: "#1e88e5"
+        });
+    });
+
     test("fit to points keeps every point inside the stage", () => {
         const block = new blockClass(runtime);
         const points = [

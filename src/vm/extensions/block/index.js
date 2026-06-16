@@ -141,10 +141,6 @@ class ExtensionBlocks {
         // Map layer transparency (ghost effect: 0 = opaque, 100 = invisible).
         this._opacity = 0;
 
-        // Result of "get current location".
-        this.currentLat = '';
-        this.currentLng = '';
-
         // Renderer objects (created lazily on first map display).
         this._skinId = null;
         this._drawableId = null;
@@ -263,6 +259,22 @@ class ExtensionBlocks {
                     }
                 },
                 {
+                    opcode: 'addCenterPin',
+                    blockType: BlockType.COMMAND,
+                    text: formatMessage({
+                        id: 'map.addCenterPin',
+                        default: '地図の中心に [COLOR] のピンを立てる',
+                        description: 'drop a pin at the map center'
+                    }),
+                    arguments: {
+                        COLOR: {
+                            type: ArgumentType.STRING,
+                            menu: 'pinColorMenu',
+                            defaultValue: '#e53935'
+                        }
+                    }
+                },
+                {
                     opcode: 'clearPoints',
                     blockType: BlockType.COMMAND,
                     text: formatMessage({
@@ -281,33 +293,6 @@ class ExtensionBlocks {
                     })
                 },
                 '---',
-                {
-                    opcode: 'getCurrentLocation',
-                    blockType: BlockType.COMMAND,
-                    text: formatMessage({
-                        id: 'map.getCurrentLocation',
-                        default: '現在地を取得する',
-                        description: 'get the current location of the device'
-                    })
-                },
-                {
-                    opcode: 'currentLatReporter',
-                    blockType: BlockType.REPORTER,
-                    text: formatMessage({
-                        id: 'map.currentLat',
-                        default: '現在地の緯度',
-                        description: 'latitude of the current location'
-                    })
-                },
-                {
-                    opcode: 'currentLngReporter',
-                    blockType: BlockType.REPORTER,
-                    text: formatMessage({
-                        id: 'map.currentLng',
-                        default: '現在地の経度',
-                        description: 'longitude of the current location'
-                    })
-                },
                 {
                     opcode: 'showCurrentLocation',
                     blockType: BlockType.COMMAND,
@@ -650,6 +635,15 @@ class ExtensionBlocks {
         return this._redraw();
     }
 
+    addCenterPin (args) {
+        this._points.push({
+            lat: this.centerLat,
+            lng: this.centerLng,
+            color: Cast.toString(args.COLOR)
+        });
+        return this._redraw();
+    }
+
     /**
      * Move and zoom the map so that every collected point is visible.
      * Picks the largest integer zoom at which the points' bounding box
@@ -701,31 +695,6 @@ class ExtensionBlocks {
 
     // ---- Blocks: current location / distance ----
 
-    getCurrentLocation () {
-        if (typeof navigator === 'undefined' || !navigator.geolocation) {
-            return;
-        }
-        return new Promise(resolve => {
-            navigator.geolocation.getCurrentPosition(
-                position => {
-                    this.currentLat = position.coords.latitude;
-                    this.currentLng = position.coords.longitude;
-                    resolve();
-                },
-                () => resolve(),
-                {enableHighAccuracy: true, timeout: 10000, maximumAge: 0}
-            );
-        });
-    }
-
-    currentLatReporter () {
-        return this.currentLat;
-    }
-
-    currentLngReporter () {
-        return this.currentLng;
-    }
-
     /**
      * Get the device's current location and center the map on it.
      * @returns {Promise|undefined} - resolves when the map has been redrawn.
@@ -737,8 +706,6 @@ class ExtensionBlocks {
         return new Promise(resolve => {
             navigator.geolocation.getCurrentPosition(
                 position => {
-                    this.currentLat = position.coords.latitude;
-                    this.currentLng = position.coords.longitude;
                     this.centerLat = position.coords.latitude;
                     this.centerLng = position.coords.longitude;
                     Promise.resolve(this._redraw()).then(resolve);
