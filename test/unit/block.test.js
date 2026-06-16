@@ -7,6 +7,14 @@ describe("blockClass", () => {
         }
     };
 
+    // Stage position of a coordinate under the block's current view.
+    const stageX = (block, lng) =>
+        block._lngToWorldX(lng, block.zoom) -
+        (block._lngToWorldX(block.centerLng, block.zoom) - 240);
+    const stageY = (block, lat) =>
+        block._latToWorldY(lat, block.zoom) -
+        (block._latToWorldY(block.centerLat, block.zoom) - 180);
+
     test("should create an instance of blockClass", () => {
         const block = new blockClass(runtime);
         expect(block).toBeInstanceOf(blockClass);
@@ -21,31 +29,29 @@ describe("blockClass", () => {
 
     test("default map state is Tokyo Station", () => {
         const block = new blockClass(runtime);
-        expect(block.mapLat()).toBeCloseTo(35.681236, 5);
-        expect(block.mapLng()).toBeCloseTo(139.767125, 5);
-        expect(block.mapZoom()).toBe(13);
+        expect(block.centerLat).toBeCloseTo(35.681236, 5);
+        expect(block.centerLng).toBeCloseTo(139.767125, 5);
+        expect(block.zoom).toBe(13);
     });
 
     test("zoom is clamped to the supported range", () => {
         const block = new blockClass(runtime);
         block.setZoom({ ZOOM: 99 });
-        expect(block.mapZoom()).toBe(19);
+        expect(block.zoom).toBe(19);
         block.setZoom({ ZOOM: -5 });
-        expect(block.mapZoom()).toBe(0);
+        expect(block.zoom).toBe(0);
     });
 
-    test("the map center maps to stage origin", () => {
+    test("addPoint stores latitude, longitude and color", () => {
         const block = new blockClass(runtime);
-        expect(block.lngToX({ LNG: block.mapLng() })).toBe(0);
-        expect(block.latToY({ LAT: block.mapLat() })).toBe(0);
-    });
-
-    test("coordinate conversion round trips", () => {
-        const block = new blockClass(runtime);
-        const lng = block.xToLng({ X: 100 });
-        expect(block.lngToX({ LNG: lng })).toBeCloseTo(100, 0);
-        const lat = block.yToLat({ Y: 80 });
-        expect(block.latToY({ LAT: lat })).toBeCloseTo(80, 0);
+        block.clearPoints();
+        block.addPoint({ LAT: 34.702485, LNG: 135.495951, COLOR: "#00ff00" });
+        expect(block._points).toHaveLength(1);
+        expect(block._points[0]).toMatchObject({
+            lat: 34.702485,
+            lng: 135.495951,
+            color: "#00ff00"
+        });
     });
 
     test("fit to points keeps every point inside the stage", () => {
@@ -59,38 +65,11 @@ describe("blockClass", () => {
         for (const p of points) block.addPoint(p);
         block.fitToPoints();
         for (const p of points) {
-            expect(Math.abs(block.lngToX({ LNG: p.LNG }))).toBeLessThanOrEqual(240);
-            expect(Math.abs(block.latToY({ LAT: p.LAT }))).toBeLessThanOrEqual(180);
+            expect(stageX(block, p.LNG)).toBeGreaterThanOrEqual(0);
+            expect(stageX(block, p.LNG)).toBeLessThanOrEqual(480);
+            expect(stageY(block, p.LAT)).toBeGreaterThanOrEqual(0);
+            expect(stageY(block, p.LAT)).toBeLessThanOrEqual(360);
         }
-    });
-
-    test("draws one pin per on-stage point", () => {
-        const block = new blockClass(runtime);
-        // Stub the renderer state so _redraw's drawing path runs.
-        const calls = { arc: 0 };
-        const ctx = new Proxy({}, {
-            get: (_t, prop) => {
-                if (prop === "arc") return () => { calls.arc++; };
-                if (prop === "measureText") return () => ({ width: 100 });
-                return () => {};
-            }
-        });
-        block._ctx = ctx;
-        // Tokyo center at zoom 13: Tokyo is on-stage, Osaka is far off-stage.
-        block.centerLat = 35.681236;
-        block.centerLng = 139.767125;
-        block.zoom = 13;
-        const n = Math.pow(2, block.zoom);
-        const left = block._lngToWorldX(block.centerLng, block.zoom) - 240;
-        const top = block._latToWorldY(block.centerLat, block.zoom) - 180;
-        block._points = [
-            { lat: 35.681236, lng: 139.767125 }, // Tokyo (on stage)
-            { lat: 34.702485, lng: 135.495951 }  // Osaka (off stage)
-        ];
-        expect(n).toBeGreaterThan(0);
-        block._drawMarkers(ctx, block.zoom, left, top);
-        // Each pin uses 2 arcs (head + center dot); only Tokyo is on-stage.
-        expect(calls.arc).toBe(2);
     });
 
     test("fit to a single point centers on it", () => {
@@ -98,8 +77,36 @@ describe("blockClass", () => {
         block.clearPoints();
         block.addPoint({ LAT: 34.702485, LNG: 135.495951 });
         block.fitToPoints();
-        expect(block.mapLat()).toBeCloseTo(34.702485, 5);
-        expect(block.mapLng()).toBeCloseTo(135.495951, 5);
+        expect(block.centerLat).toBeCloseTo(34.702485, 5);
+        expect(block.centerLng).toBeCloseTo(135.495951, 5);
+    });
+
+    test("draws one pin per on-stage point", () => {
+        const block = new blockClass(runtime);
+        const calls = { arc: 0 };
+        const ctx = new Proxy({}, {
+            get: (_t, prop) => {
+                if (prop === "arc") return () => { calls.arc++; };
+                return () => {};
+            }
+        });
+        block.centerLat = 35.681236;
+        block.centerLng = 139.767125;
+        block.zoom = 13;
+        const left = block._lngToWorldX(block.centerLng, block.zoom) - 240;
+        const top = block._latToWorldY(block.centerLat, block.zoom) - 180;
+        block._points = [
+            { lat: 35.681236, lng: 139.767125, color: "#e53935" }, // Tokyo (on stage)
+            { lat: 34.702485, lng: 135.495951, color: "#e53935" }  // Osaka (off stage)
+        ];
+        block._drawMarkers(ctx, block.zoom, left, top);
+        // Each pin uses 2 arcs (head + center dot); only Tokyo is on-stage.
+        expect(calls.arc).toBe(2);
+    });
+
+    test("showCurrentLocation does not throw without geolocation", () => {
+        const block = new blockClass(runtime);
+        expect(() => block.showCurrentLocation()).not.toThrow();
     });
 
     test("distance between Tokyo and Osaka is about 400km", () => {

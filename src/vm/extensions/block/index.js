@@ -182,19 +182,6 @@ class ExtensionBlocks {
                     }
                 },
                 {
-                    opcode: 'setCenter',
-                    blockType: BlockType.COMMAND,
-                    text: formatMessage({
-                        id: 'map.setCenter',
-                        default: '緯度 [LAT] 経度 [LNG] に地図を動かす',
-                        description: 'move the map center'
-                    }),
-                    arguments: {
-                        LAT: {type: ArgumentType.NUMBER, defaultValue: 35.681236},
-                        LNG: {type: ArgumentType.NUMBER, defaultValue: 139.767125}
-                    }
-                },
-                {
                     opcode: 'setZoom',
                     blockType: BlockType.COMMAND,
                     text: formatMessage({
@@ -219,6 +206,20 @@ class ExtensionBlocks {
                     }
                 },
                 {
+                    opcode: 'addPoint',
+                    blockType: BlockType.COMMAND,
+                    text: formatMessage({
+                        id: 'map.addPoint',
+                        default: '地点 緯度 [LAT] 経度 [LNG] に [COLOR] のピンを立てる',
+                        description: 'drop a pin at a point'
+                    }),
+                    arguments: {
+                        LAT: {type: ArgumentType.NUMBER, defaultValue: 35.681236},
+                        LNG: {type: ArgumentType.NUMBER, defaultValue: 139.767125},
+                        COLOR: {type: ArgumentType.COLOR, defaultValue: '#e53935'}
+                    }
+                },
+                {
                     opcode: 'clearPoints',
                     blockType: BlockType.COMMAND,
                     text: formatMessage({
@@ -228,19 +229,6 @@ class ExtensionBlocks {
                     })
                 },
                 {
-                    opcode: 'addPoint',
-                    blockType: BlockType.COMMAND,
-                    text: formatMessage({
-                        id: 'map.addPoint',
-                        default: '地点 緯度 [LAT] 経度 [LNG] にピンを立てる',
-                        description: 'drop a pin at a point'
-                    }),
-                    arguments: {
-                        LAT: {type: ArgumentType.NUMBER, defaultValue: 35.681236},
-                        LNG: {type: ArgumentType.NUMBER, defaultValue: 139.767125}
-                    }
-                },
-                {
                     opcode: 'fitToPoints',
                     blockType: BlockType.COMMAND,
                     text: formatMessage({
@@ -248,83 +236,6 @@ class ExtensionBlocks {
                         default: 'すべての地点が見えるように地図を合わせる',
                         description: 'move and zoom the map so all points are visible'
                     })
-                },
-                '---',
-                {
-                    opcode: 'mapLat',
-                    blockType: BlockType.REPORTER,
-                    text: formatMessage({
-                        id: 'map.mapLat',
-                        default: '地図の中心の緯度',
-                        description: 'latitude of the map center'
-                    })
-                },
-                {
-                    opcode: 'mapLng',
-                    blockType: BlockType.REPORTER,
-                    text: formatMessage({
-                        id: 'map.mapLng',
-                        default: '地図の中心の経度',
-                        description: 'longitude of the map center'
-                    })
-                },
-                {
-                    opcode: 'mapZoom',
-                    blockType: BlockType.REPORTER,
-                    text: formatMessage({
-                        id: 'map.mapZoom',
-                        default: '地図のズーム',
-                        description: 'current zoom level of the map'
-                    })
-                },
-                '---',
-                {
-                    opcode: 'lngToX',
-                    blockType: BlockType.REPORTER,
-                    text: formatMessage({
-                        id: 'map.lngToX',
-                        default: '経度 [LNG] の x座標',
-                        description: 'x position on the stage for a longitude'
-                    }),
-                    arguments: {
-                        LNG: {type: ArgumentType.NUMBER, defaultValue: 139.767125}
-                    }
-                },
-                {
-                    opcode: 'latToY',
-                    blockType: BlockType.REPORTER,
-                    text: formatMessage({
-                        id: 'map.latToY',
-                        default: '緯度 [LAT] の y座標',
-                        description: 'y position on the stage for a latitude'
-                    }),
-                    arguments: {
-                        LAT: {type: ArgumentType.NUMBER, defaultValue: 35.681236}
-                    }
-                },
-                {
-                    opcode: 'xToLng',
-                    blockType: BlockType.REPORTER,
-                    text: formatMessage({
-                        id: 'map.xToLng',
-                        default: 'x座標 [X] の経度',
-                        description: 'longitude at an x position on the stage'
-                    }),
-                    arguments: {
-                        X: {type: ArgumentType.NUMBER, defaultValue: 0}
-                    }
-                },
-                {
-                    opcode: 'yToLat',
-                    blockType: BlockType.REPORTER,
-                    text: formatMessage({
-                        id: 'map.yToLat',
-                        default: 'y座標 [Y] の緯度',
-                        description: 'latitude at a y position on the stage'
-                    }),
-                    arguments: {
-                        Y: {type: ArgumentType.NUMBER, defaultValue: 0}
-                    }
                 },
                 '---',
                 {
@@ -352,6 +263,15 @@ class ExtensionBlocks {
                         id: 'map.currentLng',
                         default: '現在地の経度',
                         description: 'longitude of the current location'
+                    })
+                },
+                {
+                    opcode: 'showCurrentLocation',
+                    blockType: BlockType.COMMAND,
+                    text: formatMessage({
+                        id: 'map.showCurrentLocation',
+                        default: '現在位置を表示する',
+                        description: 'center the map on the current location'
                     })
                 },
                 {
@@ -496,8 +416,9 @@ class ExtensionBlocks {
      * @param {CanvasRenderingContext2D} ctx - drawing context.
      * @param {number} x - stage x of the pin tip.
      * @param {number} y - stage y of the pin tip.
+     * @param {string} color - fill color of the pin head.
      */
-    _drawPin (ctx, x, y) {
+    _drawPin (ctx, x, y, color) {
         const headR = 6;
         const headCy = y - 15;
         // Left/right where the tail meets the head.
@@ -507,7 +428,7 @@ class ExtensionBlocks {
         ctx.lineJoin = 'round';
         ctx.lineWidth = 1.5;
         ctx.strokeStyle = 'rgba(0, 0, 0, 0.45)';
-        ctx.fillStyle = '#e53935';
+        ctx.fillStyle = color || '#e53935';
         // Tail (filled, no top chord so it blends into the head).
         ctx.beginPath();
         ctx.moveTo(x, y);
@@ -549,7 +470,7 @@ class ExtensionBlocks {
             if (px < -20 || px > STAGE_WIDTH + 20 || py < -20 || py > STAGE_HEIGHT + 20) {
                 continue;
             }
-            this._drawPin(ctx, px, py);
+            this._drawPin(ctx, px, py, p.color);
         }
     }
 
@@ -577,9 +498,6 @@ class ExtensionBlocks {
             for (let ty = tyMin; ty <= tyMax; ty++) {
                 if (ty < 0 || ty >= n) continue;
                 const wrappedX = ((tx % n) + n) % n;
-                // OSM standard tiles have a single layer (no map-type path
-                // segment). The map-type block/menu are kept for block
-                // compatibility but always resolve to OSM standard tiles.
                 const url = `${OSM_TILE_BASE}/${zoom}/${wrappedX}/${ty}.png`;
                 const dx = Math.round((tx * TILE_SIZE) - left);
                 const dy = Math.round((ty * TILE_SIZE) - top);
@@ -612,12 +530,6 @@ class ExtensionBlocks {
         return this._redraw();
     }
 
-    setCenter (args) {
-        this.centerLat = Cast.toNumber(args.LAT);
-        this.centerLng = Cast.toNumber(args.LNG);
-        return this._redraw();
-    }
-
     setZoom (args) {
         this.zoom = this._clampZoom(Cast.toNumber(args.ZOOM));
         return this._redraw();
@@ -638,7 +550,8 @@ class ExtensionBlocks {
     addPoint (args) {
         this._points.push({
             lat: Cast.toNumber(args.LAT),
-            lng: Cast.toNumber(args.LNG)
+            lng: Cast.toNumber(args.LNG),
+            color: Cast.toString(args.COLOR)
         });
         return this._redraw();
     }
@@ -692,46 +605,6 @@ class ExtensionBlocks {
         return this._redraw();
     }
 
-    // ---- Blocks: map state reporters ----
-
-    mapLat () {
-        return this.centerLat;
-    }
-
-    mapLng () {
-        return this.centerLng;
-    }
-
-    mapZoom () {
-        return this.zoom;
-    }
-
-    // ---- Blocks: coordinate conversion ----
-
-    lngToX (args) {
-        const lng = Cast.toNumber(args.LNG);
-        const centerWorldX = this._lngToWorldX(this.centerLng, this.zoom);
-        return Math.round(this._lngToWorldX(lng, this.zoom) - centerWorldX);
-    }
-
-    latToY (args) {
-        const lat = Cast.toNumber(args.LAT);
-        const centerWorldY = this._latToWorldY(this.centerLat, this.zoom);
-        return Math.round(centerWorldY - this._latToWorldY(lat, this.zoom));
-    }
-
-    xToLng (args) {
-        const x = Cast.toNumber(args.X);
-        const centerWorldX = this._lngToWorldX(this.centerLng, this.zoom);
-        return this._worldXToLng(centerWorldX + x, this.zoom);
-    }
-
-    yToLat (args) {
-        const y = Cast.toNumber(args.Y);
-        const centerWorldY = this._latToWorldY(this.centerLat, this.zoom);
-        return this._worldYToLat(centerWorldY - y, this.zoom);
-    }
-
     // ---- Blocks: current location / distance ----
 
     getCurrentLocation () {
@@ -757,6 +630,29 @@ class ExtensionBlocks {
 
     currentLngReporter () {
         return this.currentLng;
+    }
+
+    /**
+     * Get the device's current location and center the map on it.
+     * @returns {Promise|undefined} - resolves when the map has been redrawn.
+     */
+    showCurrentLocation () {
+        if (typeof navigator === 'undefined' || !navigator.geolocation) {
+            return;
+        }
+        return new Promise(resolve => {
+            navigator.geolocation.getCurrentPosition(
+                position => {
+                    this.currentLat = position.coords.latitude;
+                    this.currentLng = position.coords.longitude;
+                    this.centerLat = position.coords.latitude;
+                    this.centerLng = position.coords.longitude;
+                    Promise.resolve(this._redraw()).then(resolve);
+                },
+                () => resolve(),
+                {enableHighAccuracy: true, timeout: 10000, maximumAge: 0}
+            );
+        });
     }
 
     distance (args) {
