@@ -360,7 +360,7 @@ class ExtensionBlocks {
                     blockType: BlockType.REPORTER,
                     text: formatMessage({
                         id: 'map.mapLat',
-                        default: '中心からの緯度',
+                        default: '中心の緯度',
                         description: 'latitude of the map center'
                     })
                 },
@@ -369,7 +369,7 @@ class ExtensionBlocks {
                     blockType: BlockType.REPORTER,
                     text: formatMessage({
                         id: 'map.mapLng',
-                        default: '中心からの経度',
+                        default: '中心の経度',
                         description: 'longitude of the map center'
                     })
                 },

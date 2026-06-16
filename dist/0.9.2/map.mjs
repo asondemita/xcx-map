@@ -779,8 +779,8 @@ var ja = {
 	"map.pinNumber.on": "する",
 	"map.scrollBetweenPins": "ピン番号 [FROM] からピン番号 [TO] へスクロールする",
 	"map.pinDistance": "ピン番号 [FROM] からピン番号 [TO] までの距離(km)",
-	"map.mapLat": "中心からの緯度",
-	"map.mapLng": "中心からの経度",
+	"map.mapLat": "中心の緯度",
+	"map.mapLng": "中心の経度",
 	"map.showCurrentLocation": "現在位置の地図を表示する",
 	"map.distance": "緯度 [LAT1] 経度 [LNG1] から 緯度 [LAT2] 経度 [LNG2] までの距離(km)",
 	"map.color.red": "赤",
@@ -817,8 +817,8 @@ var translations = {
 	"map.pinNumber.on": "する",
 	"map.scrollBetweenPins": "ピンばんごう [FROM] からピンばんごう [TO] へスクロールする",
 	"map.pinDistance": "ピンばんごう [FROM] からピンばんごう [TO] までのきょり(km)",
-	"map.mapLat": "ちゅうしんからのいど",
-	"map.mapLng": "ちゅうしんからのけいど",
+	"map.mapLat": "ちゅうしんのいど",
+	"map.mapLng": "ちゅうしんのけいど",
 	"map.showCurrentLocation": "げんざいちのちずをひょうじする",
 	"map.distance": "いど [LAT1] けいど [LNG1] から いど [LAT2] けいど [LNG2] までのきょり(km)",
 	"map.color.red": "あか",
@@ -1167,7 +1167,7 @@ var ExtensionBlocks = /*#__PURE__*/function () {
           blockType: BlockType.REPORTER,
           text: formatMessage({
             id: 'map.mapLat',
-            default: '中心からの緯度',
+            default: '中心の緯度',
             description: 'latitude of the map center'
           })
         }, {
@@ -1175,7 +1175,7 @@ var ExtensionBlocks = /*#__PURE__*/function () {
           blockType: BlockType.REPORTER,
           text: formatMessage({
             id: 'map.mapLng',
-            default: '中心からの経度',
+            default: '中心の経度',
             description: 'longitude of the map center'
           })
         }, {
