@@ -1124,7 +1124,7 @@ class ExtensionBlocks {
             Math.min(from.lng, to.lng), Math.max(from.lng, to.lng)
         );
         const dipZoom = Math.max(MIN_ZOOM, Math.min(fitZoom, startZoom - 1));
-        const steps = 60;
+        const steps = 180;
         const delayMs = 24;
         const frame = t => {
             this.centerLat = from.lat + ((to.lat - from.lat) * t);

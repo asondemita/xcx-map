@@ -185,7 +185,7 @@ describe("blockClass", () => {
             // the arc returns to the starting zoom at the end
             expect(block.zoom).toBe(startZoom);
         });
-    });
+    }, 15000);
 
     test("_fitZoomForBounds is low for a wide box, high for a tiny box", () => {
         const block = new blockClass(runtime);
