@@ -1105,9 +1105,55 @@ class ExtensionBlocks {
     }
 
     /**
-     * Scroll the map center from one pin to another along an arc: the zoom
-     * dips out at the midpoint (just enough to frame both pins) and returns
-     * to the start zoom, like a camera arcing up and back down.
+     * van Wijk & Nuij (2003) "Smooth and efficient zooming and panning":
+     * builds the optimal zoom/pan path between two viewports. Returns a
+     * function t in [0,1] -> {x, y, w} (center world px and viewport width).
+     * @param {number} ux0 - start center world x.
+     * @param {number} uy0 - start center world y.
+     * @param {number} w0 - start viewport width (world px).
+     * @param {number} ux1 - end center world x.
+     * @param {number} uy1 - end center world y.
+     * @param {number} w1 - end viewport width (world px).
+     * @returns {Function} - interpolator t -> {x, y, w}.
+     */
+    _smoothZoomPath (ux0, uy0, w0, ux1, uy1, w1) {
+        const rho = Math.SQRT2;
+        const rho2 = rho * rho;
+        const rho4 = rho2 * rho2;
+        const cosh = x => (Math.exp(x) + Math.exp(-x)) / 2;
+        const sinh = x => (Math.exp(x) - Math.exp(-x)) / 2;
+        const tanh = x => {
+            const e = Math.exp(2 * x);
+            return (e - 1) / (e + 1);
+        };
+        const dx = ux1 - ux0;
+        const dy = uy1 - uy0;
+        const d2 = (dx * dx) + (dy * dy);
+        if (d2 < 1e-9) {
+            // Same point: just interpolate the zoom exponentially.
+            const sameS = Math.log(w1 / w0) / rho;
+            return t => ({x: ux0 + (t * dx), y: uy0 + (t * dy), w: w0 * Math.exp(rho * t * sameS)});
+        }
+        const d1 = Math.sqrt(d2);
+        const b0 = (((w1 * w1) - (w0 * w0)) + (rho4 * d2)) / (2 * w0 * rho2 * d1);
+        const b1 = (((w1 * w1) - (w0 * w0)) - (rho4 * d2)) / (2 * w1 * rho2 * d1);
+        const r0 = Math.log(Math.sqrt((b0 * b0) + 1) - b0);
+        const r1 = Math.log(Math.sqrt((b1 * b1) + 1) - b1);
+        const S = (r1 - r0) / rho;
+        const coshr0 = cosh(r0);
+        const path = t => {
+            const s = (t * S) + (r0 / rho);
+            const u = (w0 / (rho2 * d1)) * ((coshr0 * tanh(rho * s)) - sinh(r0));
+            return {x: ux0 + (u * dx), y: uy0 + (u * dy), w: (w0 * coshr0) / cosh(rho * s)};
+        };
+        path.S = S;
+        return path;
+    }
+
+    /**
+     * Scroll the map from one pin to another with a van Wijk & Nuij smooth
+     * zoom/pan path: it zooms out, glides across, and zooms back in with a
+     * constant perceived velocity. Keeps the start zoom.
      * @param {object} args - block arguments with 1-based FROM/TO pin numbers.
      * @returns {Promise|undefined} - resolves when the scroll finishes.
      */
@@ -1118,22 +1164,22 @@ class ExtensionBlocks {
             return;
         }
         const startZoom = this.zoom;
-        // Zoom out at least one level, or far enough to frame both pins.
-        const fitZoom = this._fitZoomForBounds(
-            Math.min(from.lat, to.lat), Math.max(from.lat, to.lat),
-            Math.min(from.lng, to.lng), Math.max(from.lng, to.lng)
+        const maxZoom = this._maxZoom();
+        // Work in world pixels at the start zoom; the viewport is STAGE_WIDTH
+        // wide at both ends, so the path zooms out only as far as needed.
+        const path = this._smoothZoomPath(
+            this._lngToWorldX(from.lng, startZoom), this._latToWorldY(from.lat, startZoom), STAGE_WIDTH,
+            this._lngToWorldX(to.lng, startZoom), this._latToWorldY(to.lat, startZoom), STAGE_WIDTH
         );
-        const dipZoom = Math.max(MIN_ZOOM, Math.min(fitZoom, startZoom - 1));
         const steps = 180;
         const delayMs = 24;
         const frame = t => {
-            this.centerLat = from.lat + ((to.lat - from.lat) * t);
-            this.centerLng = from.lng + ((to.lng - from.lng) * t);
-            // 4t(1-t) is a parabola: 0 at the ends, 1 at the midpoint.
-            const arc = 4 * t * (1 - t);
-            // Render at a fractional zoom for a smooth zoom-out and back.
-            const renderZoom = startZoom - ((startZoom - dipZoom) * arc);
-            return Promise.resolve(this._redraw(renderZoom));
+            const p = path(t);
+            this.centerLng = this._worldXToLng(p.x, startZoom);
+            this.centerLat = this._worldYToLat(p.y, startZoom);
+            // w = STAGE_WIDTH * 2^(startZoom - z)  ->  z = startZoom - log2(w/STAGE_WIDTH)
+            const z = startZoom - (Math.log(p.w / STAGE_WIDTH) / Math.LN2);
+            return Promise.resolve(this._redraw(Math.max(MIN_ZOOM, Math.min(maxZoom, z))));
         };
         const animate = i => frame(i / steps).then(() => {
             if (i >= steps) {

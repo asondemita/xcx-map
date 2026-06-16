@@ -187,6 +187,20 @@ describe("blockClass", () => {
         });
     }, 15000);
 
+    test("_smoothZoomPath hits both endpoints and zooms out in the middle", () => {
+        const block = new blockClass(runtime);
+        const path = block._smoothZoomPath(0, 0, 480, 1000, 0, 480);
+        const a = path(0);
+        const mid = path(0.5);
+        const b = path(1);
+        expect(a.x).toBeCloseTo(0, 6);
+        expect(a.w).toBeCloseTo(480, 6);
+        expect(b.x).toBeCloseTo(1000, 6);
+        expect(b.w).toBeCloseTo(480, 6);
+        // the viewport widens (zooms out) partway through
+        expect(mid.w).toBeGreaterThan(480);
+    });
+
     test("_fitZoomForBounds is low for a wide box, high for a tiny box", () => {
         const block = new blockClass(runtime);
         const wide = block._fitZoomForBounds(10, 30, 20, 40);
