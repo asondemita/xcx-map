@@ -7,19 +7,19 @@ var en$1 = {
 	"map.entry.description": "Draw maps with OpenStreetMap tiles."
 };
 var ja$1 = {
-	"map.entry.name": "地図",
+	"map.entry.name": "地図 (Map)",
 	"map.entry.description": "OpenStreetMap で地図を描きます。"
 };
 var translations$1 = {
 	en: en$1,
 	ja: ja$1,
 	"ja-Hira": {
-	"map.entry.name": "ちず",
+	"map.entry.name": "ちず (Map)",
 	"map.entry.description": "オープンストリートマップでちずをかきます。"
 }
 };
 
-var version$1 = "0.6.0";
+var version$1 = "0.5.1";
 
 /**
  * This is an extension for Xcratch.
@@ -40,7 +40,7 @@ var entry = {
   get name() {
     return formatMessage$1({
       id: 'map.entry.name',
-      defaultMessage: '地図',
+      defaultMessage: '地図 (Map)',
       description: 'name of the extension'
     });
   },
@@ -724,20 +724,18 @@ var Cast = /*@__PURE__*/getDefaultExportFromCjs(castExports);
 
 var en = {
 	"map.name": "Map",
-	"map.showMapAt": "show map at latitude [LAT] longitude [LNG]",
-	"map.showMapByKeyword": "show map of [KEYWORD]",
-	"map.setMapType": "set map type to [TYPE]",
-	"map.mapType.pale": "pale (GSI)",
-	"map.mapType.osm": "standard (OSM)",
+	"map.showMapAt": "show map at latitude [LAT] longitude [LNG] zoom [ZOOM]",
 	"map.setZoom": "set zoom to [ZOOM]",
 	"map.changeZoom": "change zoom by [ZOOM]",
 	"map.panHorizontal": "move map [PIXELS] pixels horizontally",
 	"map.panVertical": "move map [PIXELS] pixels vertically",
 	"map.setOpacity": "set map transparency to [OPACITY]",
 	"map.addPoint": "drop a [COLOR] pin at latitude [LAT] longitude [LNG]",
-	"map.addCenterPin": "drop a [COLOR] pin at the map center",
 	"map.clearPoints": "clear all pins",
 	"map.fitToPoints": "fit map so all pins are visible",
+	"map.getCurrentLocation": "get current location",
+	"map.currentLat": "current latitude",
+	"map.currentLng": "current longitude",
 	"map.showCurrentLocation": "show current location",
 	"map.distance": "distance from latitude [LAT1] longitude [LNG1] to latitude [LAT2] longitude [LNG2] (km)",
 	"map.color.red": "red",
@@ -750,21 +748,19 @@ var en = {
 	"map.color.black": "black"
 };
 var ja = {
-	"map.name": "地図",
-	"map.showMapAt": "緯度 [LAT] 経度 [LNG] の地図を表示する",
-	"map.showMapByKeyword": "[KEYWORD] の地図を表示する",
-	"map.setMapType": "地図の種類を [TYPE] にする",
-	"map.mapType.pale": "淡色",
-	"map.mapType.osm": "標準",
+	"map.name": "地図 (Map)",
+	"map.showMapAt": "緯度 [LAT] 経度 [LNG] ズーム [ZOOM] の地図を表示する",
 	"map.setZoom": "ズームを [ZOOM] にする",
 	"map.changeZoom": "ズームを [ZOOM] ずつ変える",
 	"map.panHorizontal": "地図を横に [PIXELS] ピクセル移動する",
 	"map.panVertical": "地図を縦に [PIXELS] ピクセル移動する",
 	"map.setOpacity": "地図の透明度を [OPACITY] にする",
 	"map.addPoint": "緯度 [LAT] 経度 [LNG] に [COLOR] のピンを立てる",
-	"map.addCenterPin": "地図の中心に [COLOR] のピンを立てる",
 	"map.clearPoints": "ピンを全て消す",
 	"map.fitToPoints": "全てのピンが見えるように地図を合わせる",
+	"map.getCurrentLocation": "現在地を取得する",
+	"map.currentLat": "現在地の緯度",
+	"map.currentLng": "現在地の経度",
 	"map.showCurrentLocation": "現在位置を表示する",
 	"map.distance": "緯度 [LAT1] 経度 [LNG1] から 緯度 [LAT2] 経度 [LNG2] までの距離(km)",
 	"map.color.red": "赤",
@@ -780,21 +776,19 @@ var translations = {
 	en: en,
 	ja: ja,
 	"ja-Hira": {
-	"map.name": "ちず",
-	"map.showMapAt": "いど [LAT] けいど [LNG] のちずをひょうじする",
-	"map.showMapByKeyword": "[KEYWORD] のちずをひょうじする",
-	"map.setMapType": "ちずのしゅるいを [TYPE] にする",
-	"map.mapType.pale": "たんしょく",
-	"map.mapType.osm": "ひょうじゅん",
+	"map.name": "ちず (Map)",
+	"map.showMapAt": "いど [LAT] けいど [LNG] ズーム [ZOOM] のちずをひょうじする",
 	"map.setZoom": "ズームを [ZOOM] にする",
 	"map.changeZoom": "ズームを [ZOOM] ずつかえる",
 	"map.panHorizontal": "ちずをよこに [PIXELS] ピクセルうごかす",
 	"map.panVertical": "ちずをたてに [PIXELS] ピクセルうごかす",
 	"map.setOpacity": "ちずのとうめいどを [OPACITY] にする",
 	"map.addPoint": "いど [LAT] けいど [LNG] に [COLOR] のピンをたてる",
-	"map.addCenterPin": "ちずのちゅうしんに [COLOR] のピンをたてる",
 	"map.clearPoints": "ピンをすべてけす",
 	"map.fitToPoints": "すべてのピンがみえるようにちずをあわせる",
+	"map.getCurrentLocation": "げんざいちをしゅとくする",
+	"map.currentLat": "げんざいちのいど",
+	"map.currentLng": "げんざいちのけいど",
 	"map.showCurrentLocation": "げんざいちをひょうじする",
 	"map.distance": "いど [LAT1] けいど [LNG1] から いど [LAT2] けいど [LNG2] までのきょり(km)",
 	"map.color.red": "あか",
@@ -857,24 +851,13 @@ var STAGE_HEIGHT = 360;
 var TILE_SIZE = 256;
 
 /**
- * Raster tile sources selectable from the "map type" block. None need an
- * API key. GSI (国土地理院) tiles cover Japan only; OSM standard covers the
- * whole world. Each requires attribution per its usage policy.
- * @type {object}
+ * Base URL of OpenStreetMap standard raster tiles.
+ * These tiles need no API key. Attribution to OpenStreetMap
+ * contributors is required by the Tile Usage Policy:
+ * https://operations.osmfoundation.org/policies/tiles/
+ * @type {string}
  */
-var TILE_TYPES = {
-  pale: {
-    base: 'https://cyberjapandata.gsi.go.jp/xyz/pale',
-    maxZoom: 18,
-    attribution: '地理院タイル (国土地理院)'
-  },
-  osm: {
-    base: 'https://tile.openstreetmap.org',
-    maxZoom: 19,
-    attribution: '© OpenStreetMap contributors'
-  }
-};
-var DEFAULT_TILE_TYPE = 'pale';
+var OSM_TILE_BASE = 'https://tile.openstreetmap.org';
 
 /**
  * Limit of the Web Mercator projection in degrees.
@@ -882,6 +865,7 @@ var DEFAULT_TILE_TYPE = 'pale';
  */
 var MERCATOR_MAX_LAT = 85.05112878;
 var MIN_ZOOM = 0;
+var MAX_ZOOM = 19;
 
 /**
  * Scratch 3.0 blocks which draw maps using OpenStreetMap raster tiles.
@@ -908,14 +892,15 @@ var ExtensionBlocks = /*#__PURE__*/function () {
     this.centerLng = 139.767125;
     this.zoom = 13;
 
-    // Selected raster tile source (key of TILE_TYPES).
-    this._mapType = DEFAULT_TILE_TYPE;
-
     // Points collected for "fit map to all points".
     this._points = [];
 
     // Map layer transparency (ghost effect: 0 = opaque, 100 = invisible).
     this._opacity = 0;
+
+    // Result of "get current location".
+    this.currentLat = '';
+    this.currentLng = '';
 
     // Renderer objects (created lazily on first map display).
     this._skinId = null;
@@ -948,7 +933,7 @@ var ExtensionBlocks = /*#__PURE__*/function () {
           blockType: BlockType.COMMAND,
           text: formatMessage({
             id: 'map.showMapAt',
-            default: '緯度 [LAT] 経度 [LNG] の地図を表示する',
+            default: '緯度 [LAT] 経度 [LNG] ズーム [ZOOM] の地図を表示する',
             description: 'display a map at the given location'
           }),
           arguments: {
@@ -959,35 +944,10 @@ var ExtensionBlocks = /*#__PURE__*/function () {
             LNG: {
               type: ArgumentType.NUMBER,
               defaultValue: 139.767125
-            }
-          }
-        }, {
-          opcode: 'showMapByKeyword',
-          blockType: BlockType.COMMAND,
-          text: formatMessage({
-            id: 'map.showMapByKeyword',
-            default: '[KEYWORD] の地図を表示する',
-            description: 'search a place name and show its map'
-          }),
-          arguments: {
-            KEYWORD: {
-              type: ArgumentType.STRING,
-              defaultValue: '東京タワー'
-            }
-          }
-        }, {
-          opcode: 'setMapType',
-          blockType: BlockType.COMMAND,
-          text: formatMessage({
-            id: 'map.setMapType',
-            default: '地図の種類を [TYPE] にする',
-            description: 'set the tile type'
-          }),
-          arguments: {
-            TYPE: {
-              type: ArgumentType.STRING,
-              menu: 'mapTypeMenu',
-              defaultValue: 'pale'
+            },
+            ZOOM: {
+              type: ArgumentType.NUMBER,
+              defaultValue: 13
             }
           }
         }, {
@@ -1084,21 +1044,6 @@ var ExtensionBlocks = /*#__PURE__*/function () {
             }
           }
         }, {
-          opcode: 'addCenterPin',
-          blockType: BlockType.COMMAND,
-          text: formatMessage({
-            id: 'map.addCenterPin',
-            default: '地図の中心に [COLOR] のピンを立てる',
-            description: 'drop a pin at the map center'
-          }),
-          arguments: {
-            COLOR: {
-              type: ArgumentType.STRING,
-              menu: 'pinColorMenu',
-              defaultValue: '#e53935'
-            }
-          }
-        }, {
           opcode: 'clearPoints',
           blockType: BlockType.COMMAND,
           text: formatMessage({
@@ -1115,6 +1060,30 @@ var ExtensionBlocks = /*#__PURE__*/function () {
             description: 'move and zoom the map so all pins are visible'
           })
         }, '---', {
+          opcode: 'getCurrentLocation',
+          blockType: BlockType.COMMAND,
+          text: formatMessage({
+            id: 'map.getCurrentLocation',
+            default: '現在地を取得する',
+            description: 'get the current location of the device'
+          })
+        }, {
+          opcode: 'currentLatReporter',
+          blockType: BlockType.REPORTER,
+          text: formatMessage({
+            id: 'map.currentLat',
+            default: '現在地の緯度',
+            description: 'latitude of the current location'
+          })
+        }, {
+          opcode: 'currentLngReporter',
+          blockType: BlockType.REPORTER,
+          text: formatMessage({
+            id: 'map.currentLng',
+            default: '現在地の経度',
+            description: 'longitude of the current location'
+          })
+        }, {
           opcode: 'showCurrentLocation',
           blockType: BlockType.COMMAND,
           text: formatMessage({
@@ -1153,36 +1122,9 @@ var ExtensionBlocks = /*#__PURE__*/function () {
           pinColorMenu: {
             acceptReporters: false,
             items: 'getPinColorMenu'
-          },
-          mapTypeMenu: {
-            acceptReporters: false,
-            items: 'getMapTypeMenu'
           }
         }
       };
-    }
-
-    /**
-     * @returns {Array} - items for the map type menu (label + tile key).
-     */
-  }, {
-    key: "getMapTypeMenu",
-    value: function getMapTypeMenu() {
-      return [{
-        text: formatMessage({
-          id: 'map.mapType.pale',
-          default: '淡色',
-          description: 'GSI pale map'
-        }),
-        value: 'pale'
-      }, {
-        text: formatMessage({
-          id: 'map.mapType.osm',
-          default: '標準',
-          description: 'OSM standard map'
-        }),
-        value: 'osm'
-      }];
     }
 
     /**
@@ -1297,24 +1239,6 @@ var ExtensionBlocks = /*#__PURE__*/function () {
     }
 
     /**
-     * @returns {object} - config of the currently selected tile type.
-     */
-  }, {
-    key: "_tileConfig",
-    value: function _tileConfig() {
-      return TILE_TYPES[this._mapType] || TILE_TYPES[DEFAULT_TILE_TYPE];
-    }
-
-    /**
-     * @returns {number} - max integer zoom for the current tile type.
-     */
-  }, {
-    key: "_maxZoom",
-    value: function _maxZoom() {
-      return this._tileConfig().maxZoom;
-    }
-
-    /**
      * Clamp a zoom value to the supported integer range.
      * @param {number} zoom - requested zoom.
      * @returns {number} - clamped integer zoom.
@@ -1322,7 +1246,7 @@ var ExtensionBlocks = /*#__PURE__*/function () {
   }, {
     key: "_clampZoom",
     value: function _clampZoom(zoom) {
-      return Math.max(MIN_ZOOM, Math.min(this._maxZoom(), Math.round(zoom)));
+      return Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, Math.round(zoom)));
     }
 
     // ---- Rendering ----
@@ -1377,13 +1301,13 @@ var ExtensionBlocks = /*#__PURE__*/function () {
     }
 
     /**
-     * Draw the attribution required by the current tile source's policy.
+     * Draw the OpenStreetMap attribution required by the Tile Usage Policy.
      * @param {CanvasRenderingContext2D} ctx - drawing context.
      */
   }, {
     key: "_drawAttribution",
     value: function _drawAttribution(ctx) {
-      var label = this._tileConfig().attribution;
+      var label = '© OpenStreetMap contributors';
       ctx.font = '10px sans-serif';
       var padding = 3;
       var width = ctx.measureText(label).width + padding * 2;
@@ -1481,7 +1405,6 @@ var ExtensionBlocks = /*#__PURE__*/function () {
       var _this = this;
       if (!this._ensureSkin()) return Promise.resolve();
       var token = ++this._redrawToken;
-      var tileBase = this._tileConfig().base;
       var zoom = this.zoom;
       var n = Math.pow(2, zoom);
       var centerWorldX = this._lngToWorldX(this.centerLng, zoom);
@@ -1497,7 +1420,7 @@ var ExtensionBlocks = /*#__PURE__*/function () {
         var _loop = function _loop() {
           if (ty < 0 || ty >= n) return 1; // continue
           var wrappedX = (tx % n + n) % n;
-          var url = "".concat(tileBase, "/").concat(zoom, "/").concat(wrappedX, "/").concat(ty, ".png");
+          var url = "".concat(OSM_TILE_BASE, "/").concat(zoom, "/").concat(wrappedX, "/").concat(ty, ".png");
           var dx = Math.round(tx * TILE_SIZE - left);
           var dy = Math.round(ty * TILE_SIZE - top);
           jobs.push(_this._loadTile(url).then(function (img) {
@@ -1543,56 +1466,7 @@ var ExtensionBlocks = /*#__PURE__*/function () {
     value: function showMapAt(args) {
       this.centerLat = Cast.toNumber(args.LAT);
       this.centerLng = Cast.toNumber(args.LNG);
-      return this._redraw();
-    }
-
-    /**
-     * Geocode a free keyword with OpenStreetMap Nominatim and show its map,
-     * fitting the result's bounding box. Subject to the Nominatim usage
-     * policy (max ~1 request/second, no bulk use).
-     * @param {object} args - block arguments.
-     * @returns {Promise|undefined} - resolves when the map has been redrawn.
-     */
-  }, {
-    key: "showMapByKeyword",
-    value: function showMapByKeyword(args) {
-      var _this2 = this;
-      var keyword = Cast.toString(args.KEYWORD).trim();
-      if (keyword === '' || typeof fetch === 'undefined') {
-        return;
-      }
-      var url = 'https://nominatim.openstreetmap.org/search' + "?q=".concat(encodeURIComponent(keyword), "&format=json&limit=1&accept-language=ja");
-      return fetch(url, {
-        headers: {
-          Accept: 'application/json'
-        }
-      }).then(function (response) {
-        return response.json();
-      }).then(function (data) {
-        if (!Array.isArray(data) || data.length === 0) {
-          return;
-        }
-        var result = data[0];
-        var box = result.boundingbox; // [south, north, west, east]
-        if (box && box.length === 4) {
-          _this2._fitToBounds(Number(box[0]), Number(box[1]), Number(box[2]), Number(box[3]));
-        } else {
-          _this2.centerLat = Number(result.lat);
-          _this2.centerLng = Number(result.lon);
-          _this2.zoom = _this2._clampZoom(15);
-        }
-        return _this2._redraw();
-      }).catch(function () {});
-    }
-  }, {
-    key: "setMapType",
-    value: function setMapType(args) {
-      var type = Cast.toString(args.TYPE);
-      if (TILE_TYPES[type]) {
-        this._mapType = type;
-      }
-      // Re-clamp in case the new tile type has a lower max zoom.
-      this.zoom = this._clampZoom(this.zoom);
+      this.zoom = this._clampZoom(Cast.toNumber(args.ZOOM));
       return this._redraw();
     }
   }, {
@@ -1655,16 +1529,6 @@ var ExtensionBlocks = /*#__PURE__*/function () {
       });
       return this._redraw();
     }
-  }, {
-    key: "addCenterPin",
-    value: function addCenterPin(args) {
-      this._points.push({
-        lat: this.centerLat,
-        lng: this.centerLng,
-        color: Cast.toString(args.COLOR)
-      });
-      return this._redraw();
-    }
 
     /**
      * Move and zoom the map so that every collected point is visible.
@@ -1675,12 +1539,12 @@ var ExtensionBlocks = /*#__PURE__*/function () {
   }, {
     key: "fitToPoints",
     value: function fitToPoints() {
-      var _this3 = this;
+      var _this2 = this;
       if (this._points.length === 0) return;
       if (this._points.length === 1) {
         this.centerLat = this._points[0].lat;
         this.centerLng = this._points[0].lng;
-        this.zoom = this._clampZoom(Math.min(this._maxZoom(), 15));
+        this.zoom = this._clampZoom(Math.min(MAX_ZOOM, 15));
         return this._redraw();
       }
       // Leave a margin so points are not drawn on the very edge.
@@ -1692,13 +1556,13 @@ var ExtensionBlocks = /*#__PURE__*/function () {
         var maxX = -Infinity;
         var minY = Infinity;
         var maxY = -Infinity;
-        var _iterator3 = _createForOfIteratorHelper(_this3._points),
+        var _iterator3 = _createForOfIteratorHelper(_this2._points),
           _step3;
         try {
           for (_iterator3.s(); !(_step3 = _iterator3.n()).done;) {
             var p = _step3.value;
-            var wx = _this3._lngToWorldX(p.lng, zoom);
-            var wy = _this3._latToWorldY(p.lat, zoom);
+            var wx = _this2._lngToWorldX(p.lng, zoom);
+            var wy = _this2._latToWorldY(p.lat, zoom);
             if (wx < minX) minX = wx;
             if (wx > maxX) maxX = wx;
             if (wy < minY) minY = wy;
@@ -1718,7 +1582,7 @@ var ExtensionBlocks = /*#__PURE__*/function () {
       };
       // Search from the closest zoom outward for the first that fits.
       var fitZoom = MIN_ZOOM;
-      for (var z = this._maxZoom(); z >= MIN_ZOOM; z--) {
+      for (var z = MAX_ZOOM; z >= MIN_ZOOM; z--) {
         var _b = bounds(z);
         if (_b.maxX - _b.minX <= usableWidth && _b.maxY - _b.minY <= usableHeight) {
           fitZoom = z;
@@ -1732,47 +1596,38 @@ var ExtensionBlocks = /*#__PURE__*/function () {
       return this._redraw();
     }
 
-    /**
-     * Center and zoom the map to fit a lat/lng bounding box.
-     * @param {number} south - southern latitude.
-     * @param {number} north - northern latitude.
-     * @param {number} west - western longitude.
-     * @param {number} east - eastern longitude.
-     */
-  }, {
-    key: "_fitToBounds",
-    value: function _fitToBounds(south, north, west, east) {
-      var _this4 = this;
-      var PADDING = 24;
-      var usableWidth = STAGE_WIDTH - PADDING * 2;
-      var usableHeight = STAGE_HEIGHT - PADDING * 2;
-      var boundsAt = function boundsAt(zoom) {
-        var x1 = _this4._lngToWorldX(west, zoom);
-        var x2 = _this4._lngToWorldX(east, zoom);
-        var y1 = _this4._latToWorldY(north, zoom);
-        var y2 = _this4._latToWorldY(south, zoom);
-        return {
-          minX: Math.min(x1, x2),
-          maxX: Math.max(x1, x2),
-          minY: Math.min(y1, y2),
-          maxY: Math.max(y1, y2)
-        };
-      };
-      var fitZoom = MIN_ZOOM;
-      for (var z = this._maxZoom(); z >= MIN_ZOOM; z--) {
-        var _b2 = boundsAt(z);
-        if (_b2.maxX - _b2.minX <= usableWidth && _b2.maxY - _b2.minY <= usableHeight) {
-          fitZoom = z;
-          break;
-        }
-      }
-      var b = boundsAt(fitZoom);
-      this.centerLng = this._worldXToLng((b.minX + b.maxX) / 2, fitZoom);
-      this.centerLat = this._worldYToLat((b.minY + b.maxY) / 2, fitZoom);
-      this.zoom = fitZoom;
-    }
-
     // ---- Blocks: current location / distance ----
+  }, {
+    key: "getCurrentLocation",
+    value: function getCurrentLocation() {
+      var _this3 = this;
+      if (typeof navigator === 'undefined' || !navigator.geolocation) {
+        return;
+      }
+      return new Promise(function (resolve) {
+        navigator.geolocation.getCurrentPosition(function (position) {
+          _this3.currentLat = position.coords.latitude;
+          _this3.currentLng = position.coords.longitude;
+          resolve();
+        }, function () {
+          return resolve();
+        }, {
+          enableHighAccuracy: true,
+          timeout: 10000,
+          maximumAge: 0
+        });
+      });
+    }
+  }, {
+    key: "currentLatReporter",
+    value: function currentLatReporter() {
+      return this.currentLat;
+    }
+  }, {
+    key: "currentLngReporter",
+    value: function currentLngReporter() {
+      return this.currentLng;
+    }
 
     /**
      * Get the device's current location and center the map on it.
@@ -1781,15 +1636,17 @@ var ExtensionBlocks = /*#__PURE__*/function () {
   }, {
     key: "showCurrentLocation",
     value: function showCurrentLocation() {
-      var _this5 = this;
+      var _this4 = this;
       if (typeof navigator === 'undefined' || !navigator.geolocation) {
         return;
       }
       return new Promise(function (resolve) {
         navigator.geolocation.getCurrentPosition(function (position) {
-          _this5.centerLat = position.coords.latitude;
-          _this5.centerLng = position.coords.longitude;
-          Promise.resolve(_this5._redraw()).then(resolve);
+          _this4.currentLat = position.coords.latitude;
+          _this4.currentLng = position.coords.longitude;
+          _this4.centerLat = position.coords.latitude;
+          _this4.centerLng = position.coords.longitude;
+          Promise.resolve(_this4._redraw()).then(resolve);
         }, function () {
           return resolve();
         }, {
@@ -1836,7 +1693,7 @@ var ExtensionBlocks = /*#__PURE__*/function () {
     get: function get() {
       return formatMessage({
         id: 'map.name',
-        default: '地図',
+        default: '地図 (Map)',
         description: 'name of the extension'
       });
     }

@@ -1,43 +1,52 @@
-# 地図 (Map)
+# 地図
 
-OpenStreetMap の地図タイルを使って、Scratch のステージに地図を描く [Xcratch](https://xcratch.github.io/) 拡張です。
+ラスタタイルを Scratch のステージに直接描く [Xcratch](https://xcratch.github.io/) 拡張です。**APIキー不要**で使えます（出典の明記が条件）。
 
-[geolonia/x-geo-scratch](https://github.com/geolonia/x-geo-scratch) と同じ「ラスタタイルをステージへ直接描く」軽量方式ですが、地図ソースを **OpenStreetMap の標準タイル** にすることで、**APIキー不要・ドメイン制限なし**でどのウェブサイトからでも無料で使えます（出典の明記が条件）。
+[geolonia/x-geo-scratch](https://github.com/geolonia/x-geo-scratch) と同じ軽量方式で、タイルは **国土地理院（淡色地図・既定）** と **OpenStreetMap 標準（全世界）** をブロックで切り替えられます。既定の淡色地図は**日本国内のみ**で、国外を表示したいときは「地図の種類を標準にする」で OSM に切り替えます。
 
 地図は `renderer.createBitmapSkin()` でステージの背面レイヤーに描かれるため、スプライトは地図の上に重なって表示されます。
 
 ## ✨ できること（ブロック一覧）
 
 **地図の表示・移動・ズーム**
-- `緯度 () 経度 () ズーム () の地図を表示する`
+- `緯度 () 経度 () の地図を表示する`
+- `() の地図を表示する`（地名キーワードで検索して表示。範囲に合わせて自動ズーム）
+- `地図の種類を () にする`（`淡色`＝国土地理院/日本のみ・既定／`標準`＝OpenStreetMap/全世界）
 - `ズームを () にする` / `ズームを () ずつ変える`
 - `地図を横に () ピクセル移動する`（+で東＝右へ）/ `地図を縦に () ピクセル移動する`（+で北＝上へ）
 - `地図の透明度を () にする`（0＝不透明〜100＝透明。Scratch の「透明度」効果と同じ）
 
 **ピン・複数地点の表示**（地図上にピンを立て、全部が収まるよう位置とズームを自動調整）
 - `緯度 () 経度 () に () のピンを立てる`（色は赤・黄・青・緑・橙・紫・茶・黒から選択）
+- `地図の中心に () のピンを立てる`
 - `ピンを全て消す`
 - `全てのピンが見えるように地図を合わせる`
 
 **現在地・距離**
-- `現在位置を表示する`（端末の位置情報を取得し、その地点を地図の中心に表示）
-- `現在地を取得する` → `現在地の緯度` / `現在地の経度`（端末の位置情報。HTTPSと許可が必要）
+- `現在位置を表示する`（端末の位置情報を取得し、その地点を地図の中心に表示。HTTPSと許可が必要）
 - `緯度 () 経度 () から 緯度 () 経度 () までの距離(km)`（ハバーサイン）
 
 ## 🗾 地図データの出典
 
-このプロジェクトの地図タイルは [OpenStreetMap](https://www.openstreetmap.org/) を利用しています。地図データは © OpenStreetMap contributors（[ODbL](https://www.openstreetmap.org/copyright)）で、**出典「© OpenStreetMap contributors」の明記**が必要です（本拡張は地図右下に自動で表示します）。
+選択中のタイルに応じて、地図右下に出典を自動表示します。
+
+- **淡色（既定）**: [地理院タイル](https://maps.gsi.go.jp/development/ichiran.html)（国土地理院）。日本国内のみ。
+- **標準**: [OpenStreetMap](https://www.openstreetmap.org/) 標準タイル。地図データは © OpenStreetMap contributors（[ODbL](https://www.openstreetmap.org/copyright)）。
 
 ### ⚠️ タイル利用についての注意（過剰利用時のブロック）
 
-地図タイルは OpenStreetMap Foundation が運用する公式タイルサーバー（`tile.openstreetmap.org`）から取得しています。これは [OpenStreetMap タイル利用ポリシー](https://operations.osmfoundation.org/policies/tiles/) に基づくボランティア提供のリソースです。
+タイルは国土地理院（`cyberjapandata.gsi.go.jp`）および OpenStreetMap Foundation の公式タイルサーバー（`tile.openstreetmap.org`）から取得しています。OSM 標準タイルは [OpenStreetMap タイル利用ポリシー](https://operations.osmfoundation.org/policies/tiles/)、地理院タイルは [国土地理院の利用規約](https://maps.gsi.go.jp/development/ichiran.html) に従ってください。いずれもボランティア／公共提供のリソースです。
 
 - **過剰・不適切な利用があった場合、予告なくアクセスがブロックされることがあります。** 多人数で同時に大量のタイルを読み込むような使い方（授業での一斉アクセスなど）は、サービスを劣化させ、ブロックの対象となり得ます。
 - 本拡張は出典表示・タイルのキャッシュなどポリシー上の要件を満たすように作られていますが、**安定運用・大規模利用が必要な場合は、商用タイルプロバイダ（要APIキー）や自前のタイルサーバーの利用を検討してください。**
 
+### ⚠️ 地名検索（`() の地図を表示する`）について
+
+`() の地図を表示する` ブロックは [OpenStreetMap Nominatim](https://nominatim.openstreetmap.org/) で地名を緯度経度に変換しています。[Nominatim 利用ポリシー](https://operations.osmfoundation.org/policies/nominatim/) により **毎秒1リクエストまで・一括/大量検索は禁止** です。多人数での一斉検索（授業など）はブロック対象になり得ます。安定運用が必要な場合は商用ジオコーダ（要APIキー）の利用を検討してください。
+
 ## ✨ What You Can Do With This Extension
 
-Play [Example Project](https://xcratch.github.io/editor/#https://asondemita.github.io/xcx-map/projects/example.sb3) to look at what you can do with "地図 (Map)" extension. 
+Play [Example Project](https://xcratch.github.io/editor/#https://asondemita.github.io/xcx-map/projects/example.sb3) to look at what you can do with "地図" extension. 
 <iframe src="https://xcratch.github.io/editor/player#https://asondemita.github.io/xcx-map/projects/example.sb3" width="540px" height="460px"></iframe>
 
 
