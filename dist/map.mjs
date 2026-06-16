@@ -3,23 +3,23 @@ var img$2 = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAlgAAAF0CAYAAAD/4EcMA
 var img$1 = "data:image/svg+xml,%3c%3fxml version='1.0' encoding='UTF-8' standalone='no'%3f%3e%3c!DOCTYPE svg PUBLIC '-//W3C//DTD SVG 1.1//EN' 'http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd'%3e%3csvg width='100%25' height='100%25' viewBox='0 0 53 53' version='1.1' xmlns='http://www.w3.org/2000/svg' xmlns:xlink='http://www.w3.org/1999/xlink' xml:space='preserve' xmlns:serif='http://www.serif.com/' style='fill-rule:evenodd%3bclip-rule:evenodd%3bstroke-linejoin:round%3bstroke-miterlimit:2%3b'%3e%3crect id='%e3%82%a2%e3%83%bc%e3%83%88%e3%83%9c%e3%83%bc%e3%83%891' x='0' y='-0' width='52.083' height='52.056' style='fill:none%3b'/%3e%3cclipPath id='_clip1'%3e%3crect x='0' y='-0' width='52.083' height='52.056'/%3e%3c/clipPath%3e%3cg clip-path='url(%23_clip1)'%3e%3cg%3e%3cg%3e%3cpath d='M17.605%2c14.113c1.125%2c0.983 1.582%2c2.148 2.563%2c3.17c2.407%2c2.507 4.811%2c5.102 7.423%2c7.551c4.352%2c4.079 10.045%2c7.577 14.675%2c11.435' style='fill:none%3bstroke:white%3bstroke-width:19.17px%3bstroke-linecap:round%3bstroke-miterlimit:1.5%3b'/%3e%3cpath d='M40.824%2c11.292c-0.914%2c2.03 -3.668%2c3.898 -5.723%2c5.559c-2.684%2c2.171 -5.276%2c4.398 -7.941%2c6.581c-7.278%2c5.958 -12.955%2c12.359 -18.301%2c19.04' style='fill:none%3bstroke:white%3bstroke-width:19.17px%3bstroke-linecap:round%3bstroke-miterlimit:1.5%3b'/%3e%3c/g%3e%3cg%3e%3cpath d='M17.605%2c14.113c1.125%2c0.983 1.582%2c2.148 2.563%2c3.17c2.407%2c2.507 4.811%2c5.102 7.423%2c7.551c4.352%2c4.079 10.045%2c7.577 14.675%2c11.435' style='fill:none%3bstroke:%23f9a83a%3bstroke-width:12.5px%3bstroke-linecap:round%3bstroke-miterlimit:1.5%3b'/%3e%3cpath d='M40.824%2c11.292c-0.914%2c2.03 -3.668%2c3.898 -5.723%2c5.559c-2.684%2c2.171 -5.276%2c4.398 -7.941%2c6.581c-7.278%2c5.958 -12.955%2c12.359 -18.301%2c19.04' style='fill:none%3bstroke:%23f9a83a%3bstroke-width:12.5px%3bstroke-linecap:round%3bstroke-miterlimit:1.5%3b'/%3e%3c/g%3e%3cg%3e%3cpath d='M16.783%2c15.055c0.264%2c0.231 0.482%2c0.475 0.679%2c0.725c0.621%2c0.785 1.078%2c1.612 1.804%2c2.368c1.456%2c1.517 2.91%2c3.065 4.41%2c4.594c0.996%2c1.015 2.012%2c2.021 3.06%2c3.004c1.353%2c1.268 2.831%2c2.481 4.368%2c3.666c3.429%2c2.643 7.152%2c5.143 10.362%2c7.817c0.53%2c0.442 1.319%2c0.37 1.76%2c-0.16c0.442%2c-0.53 0.37%2c-1.319 -0.16%2c-1.76c-3.233%2c-2.694 -6.982%2c-5.215 -10.435%2c-7.877c-1.472%2c-1.135 -2.89%2c-2.296 -4.185%2c-3.51c-1.023%2c-0.959 -2.014%2c-1.941 -2.985%2c-2.931c-1.494%2c-1.522 -2.942%2c-3.064 -4.392%2c-4.574c-0.667%2c-0.695 -1.075%2c-1.465 -1.645%2c-2.187c-0.288%2c-0.365 -0.61%2c-0.72 -0.997%2c-1.058c-0.52%2c-0.454 -1.31%2c-0.4 -1.764%2c0.119c-0.453%2c0.52 -0.4%2c1.31 0.12%2c1.764Z' style='fill:white%3b'/%3e%3cpath d='M39.685%2c10.779c-0.331%2c0.733 -0.963%2c1.428 -1.694%2c2.108c-1.138%2c1.059 -2.52%2c2.058 -3.676%2c2.992l-7.947%2c6.585c-3.596%2c2.944 -6.805%2c5.995 -9.778%2c9.133c-3.104%2c3.276 -5.949%2c6.648 -8.707%2c10.094c-0.431%2c0.539 -0.343%2c1.326 0.195%2c1.757c0.539%2c0.431 1.326%2c0.344 1.757%2c-0.195c2.715%2c-3.392 5.515%2c-6.712 8.57%2c-9.937c2.903%2c-3.064 6.036%2c-6.043 9.547%2c-8.917l7.935%2c-6.576c1.418%2c-1.146 3.155%2c-2.393 4.43%2c-3.716c0.716%2c-0.743 1.293%2c-1.516 1.647%2c-2.301c0.283%2c-0.629 0.003%2c-1.37 -0.626%2c-1.653c-0.629%2c-0.284 -1.37%2c-0.003 -1.653%2c0.626Z' style='fill:white%3b'/%3e%3c/g%3e%3c/g%3e%3c/g%3e%3c/svg%3e";
 
 var en$1 = {
-	"gsiMap.entry.name": "Map",
-	"gsiMap.entry.description": "Draw maps with GSI tiles. No API key, works on any domain."
+	"map.entry.name": "Map",
+	"map.entry.description": "Draw maps with OpenStreetMap tiles. No API key, works on any domain."
 };
 var ja$1 = {
-	"gsiMap.entry.name": "地図 (Map)",
-	"gsiMap.entry.description": "地理院タイルで地図を描きます。APIキー不要・どのドメインでも使えます。"
+	"map.entry.name": "地図 (Map)",
+	"map.entry.description": "OpenStreetMap で地図を描きます。APIキー不要・どのドメインでも使えます。"
 };
 var translations$1 = {
 	en: en$1,
 	ja: ja$1,
 	"ja-Hira": {
-	"gsiMap.entry.name": "ちず (Map)",
-	"gsiMap.entry.description": "ちりいんタイルでちずをかきます。APIキーいらず・どのドメインでもつかえます。"
+	"map.entry.name": "ちず (Map)",
+	"map.entry.description": "オープンストリートマップでちずをかきます。APIキーいらず・どのドメインでもつかえます。"
 }
 };
 
-var version$1 = "0.0.2";
+var version$1 = "0.1.0";
 
 /**
  * This is an extension for Xcratch.
@@ -39,13 +39,13 @@ var version = "v".concat(version$1);
 var entry = {
   get name() {
     return formatMessage$1({
-      id: 'gsiMap.entry.name',
+      id: 'map.entry.name',
       defaultMessage: '地図 (Map)',
       description: 'name of the extension'
     });
   },
-  extensionId: 'gsiMap',
-  extensionURL: 'https://asondemita.github.io/xcx-map/dist/gsiMap.mjs',
+  extensionId: 'map',
+  extensionURL: 'https://asondemita.github.io/xcx-map/dist/map.mjs',
   collaborator: 'asondemita',
   iconURL: img$2,
   insetIconURL: img$1,
@@ -53,7 +53,7 @@ var entry = {
     return "".concat(formatMessage$1({
       defaultMessage: 'OpenStreetMap で地図を描きます。APIキー不要・どのドメインでも使えます。',
       description: 'Description for this extension',
-      id: 'gsiMap.entry.description'
+      id: 'map.entry.description'
     }), " (").concat(version, ")");
   },
   tags: ['map', 'osm'],
@@ -723,70 +723,70 @@ var castExports = requireCast();
 var Cast = /*@__PURE__*/getDefaultExportFromCjs(castExports);
 
 var en = {
-	"gsiMap.name": "Map",
-	"gsiMap.showMapAt": "show map at latitude [LAT] longitude [LNG] zoom [ZOOM]",
-	"gsiMap.setCenter": "move map to latitude [LAT] longitude [LNG]",
-	"gsiMap.setZoom": "set zoom to [ZOOM]",
-	"gsiMap.changeZoom": "change zoom by [ZOOM]",
-	"gsiMap.setMapType": "set map type to [TYPE]",
-	"gsiMap.mapLat": "map center latitude",
-	"gsiMap.mapLng": "map center longitude",
-	"gsiMap.mapZoom": "map zoom",
-	"gsiMap.lngToX": "x of longitude [LNG]",
-	"gsiMap.latToY": "y of latitude [LAT]",
-	"gsiMap.xToLng": "longitude at x [X]",
-	"gsiMap.yToLat": "latitude at y [Y]",
-	"gsiMap.getCurrentLocation": "get current location",
-	"gsiMap.currentLat": "current latitude",
-	"gsiMap.currentLng": "current longitude",
-	"gsiMap.distance": "distance from latitude [LAT1] longitude [LNG1] to latitude [LAT2] longitude [LNG2] (km)",
-	"gsiMap.elevation": "elevation at latitude [LAT] longitude [LNG] (m)",
-	"gsiMap.mapType.std": "standard"
+	"map.name": "Map",
+	"map.showMapAt": "show map at latitude [LAT] longitude [LNG] zoom [ZOOM]",
+	"map.setCenter": "move map to latitude [LAT] longitude [LNG]",
+	"map.setZoom": "set zoom to [ZOOM]",
+	"map.changeZoom": "change zoom by [ZOOM]",
+	"map.setMapType": "set map type to [TYPE]",
+	"map.mapLat": "map center latitude",
+	"map.mapLng": "map center longitude",
+	"map.mapZoom": "map zoom",
+	"map.lngToX": "x of longitude [LNG]",
+	"map.latToY": "y of latitude [LAT]",
+	"map.xToLng": "longitude at x [X]",
+	"map.yToLat": "latitude at y [Y]",
+	"map.getCurrentLocation": "get current location",
+	"map.currentLat": "current latitude",
+	"map.currentLng": "current longitude",
+	"map.distance": "distance from latitude [LAT1] longitude [LNG1] to latitude [LAT2] longitude [LNG2] (km)",
+	"map.elevation": "elevation at latitude [LAT] longitude [LNG] (m)",
+	"map.mapType.std": "standard"
 };
 var ja = {
-	"gsiMap.name": "地図 (Map)",
-	"gsiMap.showMapAt": "緯度 [LAT] 経度 [LNG] ズーム [ZOOM] の地図を表示する",
-	"gsiMap.setCenter": "緯度 [LAT] 経度 [LNG] に地図を動かす",
-	"gsiMap.setZoom": "ズームを [ZOOM] にする",
-	"gsiMap.changeZoom": "ズームを [ZOOM] ずつ変える",
-	"gsiMap.setMapType": "地図の種類を [TYPE] にする",
-	"gsiMap.mapLat": "地図の中心の緯度",
-	"gsiMap.mapLng": "地図の中心の経度",
-	"gsiMap.mapZoom": "地図のズーム",
-	"gsiMap.lngToX": "経度 [LNG] の x座標",
-	"gsiMap.latToY": "緯度 [LAT] の y座標",
-	"gsiMap.xToLng": "x座標 [X] の経度",
-	"gsiMap.yToLat": "y座標 [Y] の緯度",
-	"gsiMap.getCurrentLocation": "現在地を取得する",
-	"gsiMap.currentLat": "現在地の緯度",
-	"gsiMap.currentLng": "現在地の経度",
-	"gsiMap.distance": "緯度 [LAT1] 経度 [LNG1] から 緯度 [LAT2] 経度 [LNG2] までの距離(km)",
-	"gsiMap.elevation": "緯度 [LAT] 経度 [LNG] の標高(m)",
-	"gsiMap.mapType.std": "標準地図"
+	"map.name": "地図 (Map)",
+	"map.showMapAt": "緯度 [LAT] 経度 [LNG] ズーム [ZOOM] の地図を表示する",
+	"map.setCenter": "緯度 [LAT] 経度 [LNG] に地図を動かす",
+	"map.setZoom": "ズームを [ZOOM] にする",
+	"map.changeZoom": "ズームを [ZOOM] ずつ変える",
+	"map.setMapType": "地図の種類を [TYPE] にする",
+	"map.mapLat": "地図の中心の緯度",
+	"map.mapLng": "地図の中心の経度",
+	"map.mapZoom": "地図のズーム",
+	"map.lngToX": "経度 [LNG] の x座標",
+	"map.latToY": "緯度 [LAT] の y座標",
+	"map.xToLng": "x座標 [X] の経度",
+	"map.yToLat": "y座標 [Y] の緯度",
+	"map.getCurrentLocation": "現在地を取得する",
+	"map.currentLat": "現在地の緯度",
+	"map.currentLng": "現在地の経度",
+	"map.distance": "緯度 [LAT1] 経度 [LNG1] から 緯度 [LAT2] 経度 [LNG2] までの距離(km)",
+	"map.elevation": "緯度 [LAT] 経度 [LNG] の標高(m)",
+	"map.mapType.std": "標準地図"
 };
 var translations = {
 	en: en,
 	ja: ja,
 	"ja-Hira": {
-	"gsiMap.name": "ちず (Map)",
-	"gsiMap.showMapAt": "いど [LAT] けいど [LNG] ズーム [ZOOM] のちずをひょうじする",
-	"gsiMap.setCenter": "いど [LAT] けいど [LNG] にちずをうごかす",
-	"gsiMap.setZoom": "ズームを [ZOOM] にする",
-	"gsiMap.changeZoom": "ズームを [ZOOM] ずつかえる",
-	"gsiMap.setMapType": "ちずのしゅるいを [TYPE] にする",
-	"gsiMap.mapLat": "ちずのちゅうしんのいど",
-	"gsiMap.mapLng": "ちずのちゅうしんのけいど",
-	"gsiMap.mapZoom": "ちずのズーム",
-	"gsiMap.lngToX": "けいど [LNG] の xざひょう",
-	"gsiMap.latToY": "いど [LAT] の yざひょう",
-	"gsiMap.xToLng": "xざひょう [X] のけいど",
-	"gsiMap.yToLat": "yざひょう [Y] のいど",
-	"gsiMap.getCurrentLocation": "げんざいちをしゅとくする",
-	"gsiMap.currentLat": "げんざいちのいど",
-	"gsiMap.currentLng": "げんざいちのけいど",
-	"gsiMap.distance": "いど [LAT1] けいど [LNG1] から いど [LAT2] けいど [LNG2] までのきょり(km)",
-	"gsiMap.elevation": "いど [LAT] けいど [LNG] のひょうこう(m)",
-	"gsiMap.mapType.std": "ひょうじゅんちず"
+	"map.name": "ちず (Map)",
+	"map.showMapAt": "いど [LAT] けいど [LNG] ズーム [ZOOM] のちずをひょうじする",
+	"map.setCenter": "いど [LAT] けいど [LNG] にちずをうごかす",
+	"map.setZoom": "ズームを [ZOOM] にする",
+	"map.changeZoom": "ズームを [ZOOM] ずつかえる",
+	"map.setMapType": "ちずのしゅるいを [TYPE] にする",
+	"map.mapLat": "ちずのちゅうしんのいど",
+	"map.mapLng": "ちずのちゅうしんのけいど",
+	"map.mapZoom": "ちずのズーム",
+	"map.lngToX": "けいど [LNG] の xざひょう",
+	"map.latToY": "いど [LAT] の yざひょう",
+	"map.xToLng": "xざひょう [X] のけいど",
+	"map.yToLat": "yざひょう [Y] のいど",
+	"map.getCurrentLocation": "げんざいちをしゅとくする",
+	"map.currentLat": "げんざいちのいど",
+	"map.currentLng": "げんざいちのけいど",
+	"map.distance": "いど [LAT1] けいど [LNG1] から いど [LAT2] けいど [LNG2] までのきょり(km)",
+	"map.elevation": "いど [LAT] けいど [LNG] のひょうこう(m)",
+	"map.mapType.std": "ひょうじゅんちず"
 }
 };
 
@@ -816,14 +816,14 @@ var setupTranslations = function setupTranslations() {
     Object.assign(localeSetup.translations[localeSetup.locale], translations[localeSetup.locale]);
   }
 };
-var EXTENSION_ID = 'gsiMap';
+var EXTENSION_ID = 'map';
 
 /**
  * URL to get this extension as a module.
  * When it was loaded as a module, 'extensionURL' will be replaced a URL which is retrieved from.
  * @type {string}
  */
-var extensionURL = 'https://asondemita.github.io/xcx-map/dist/gsiMap.mjs';
+var extensionURL = 'https://asondemita.github.io/xcx-map/dist/map.mjs';
 
 /**
  * Scratch stage size in stage units (native renderer resolution).
@@ -862,7 +862,7 @@ var MIN_ZOOM = 0;
 var MAX_ZOOM = 19;
 
 /**
- * Scratch 3.0 blocks which draw maps using GSI raster tiles.
+ * Scratch 3.0 blocks which draw maps using OpenStreetMap raster tiles.
  */
 var ExtensionBlocks = /*#__PURE__*/function () {
   /**
@@ -921,7 +921,7 @@ var ExtensionBlocks = /*#__PURE__*/function () {
           opcode: 'showMapAt',
           blockType: BlockType.COMMAND,
           text: formatMessage({
-            id: 'gsiMap.showMapAt',
+            id: 'map.showMapAt',
             default: '緯度 [LAT] 経度 [LNG] ズーム [ZOOM] の地図を表示する',
             description: 'display a map at the given location'
           }),
@@ -943,7 +943,7 @@ var ExtensionBlocks = /*#__PURE__*/function () {
           opcode: 'setCenter',
           blockType: BlockType.COMMAND,
           text: formatMessage({
-            id: 'gsiMap.setCenter',
+            id: 'map.setCenter',
             default: '緯度 [LAT] 経度 [LNG] に地図を動かす',
             description: 'move the map center'
           }),
@@ -961,7 +961,7 @@ var ExtensionBlocks = /*#__PURE__*/function () {
           opcode: 'setZoom',
           blockType: BlockType.COMMAND,
           text: formatMessage({
-            id: 'gsiMap.setZoom',
+            id: 'map.setZoom',
             default: 'ズームを [ZOOM] にする',
             description: 'set the zoom level'
           }),
@@ -975,7 +975,7 @@ var ExtensionBlocks = /*#__PURE__*/function () {
           opcode: 'changeZoom',
           blockType: BlockType.COMMAND,
           text: formatMessage({
-            id: 'gsiMap.changeZoom',
+            id: 'map.changeZoom',
             default: 'ズームを [ZOOM] ずつ変える',
             description: 'change the zoom level by the given amount'
           }),
@@ -989,7 +989,7 @@ var ExtensionBlocks = /*#__PURE__*/function () {
           opcode: 'setMapType',
           blockType: BlockType.COMMAND,
           text: formatMessage({
-            id: 'gsiMap.setMapType',
+            id: 'map.setMapType',
             default: '地図の種類を [TYPE] にする',
             description: 'set the kind of map tiles'
           }),
@@ -1004,7 +1004,7 @@ var ExtensionBlocks = /*#__PURE__*/function () {
           opcode: 'mapLat',
           blockType: BlockType.REPORTER,
           text: formatMessage({
-            id: 'gsiMap.mapLat',
+            id: 'map.mapLat',
             default: '地図の中心の緯度',
             description: 'latitude of the map center'
           })
@@ -1012,7 +1012,7 @@ var ExtensionBlocks = /*#__PURE__*/function () {
           opcode: 'mapLng',
           blockType: BlockType.REPORTER,
           text: formatMessage({
-            id: 'gsiMap.mapLng',
+            id: 'map.mapLng',
             default: '地図の中心の経度',
             description: 'longitude of the map center'
           })
@@ -1020,7 +1020,7 @@ var ExtensionBlocks = /*#__PURE__*/function () {
           opcode: 'mapZoom',
           blockType: BlockType.REPORTER,
           text: formatMessage({
-            id: 'gsiMap.mapZoom',
+            id: 'map.mapZoom',
             default: '地図のズーム',
             description: 'current zoom level of the map'
           })
@@ -1028,7 +1028,7 @@ var ExtensionBlocks = /*#__PURE__*/function () {
           opcode: 'lngToX',
           blockType: BlockType.REPORTER,
           text: formatMessage({
-            id: 'gsiMap.lngToX',
+            id: 'map.lngToX',
             default: '経度 [LNG] の x座標',
             description: 'x position on the stage for a longitude'
           }),
@@ -1042,7 +1042,7 @@ var ExtensionBlocks = /*#__PURE__*/function () {
           opcode: 'latToY',
           blockType: BlockType.REPORTER,
           text: formatMessage({
-            id: 'gsiMap.latToY',
+            id: 'map.latToY',
             default: '緯度 [LAT] の y座標',
             description: 'y position on the stage for a latitude'
           }),
@@ -1056,7 +1056,7 @@ var ExtensionBlocks = /*#__PURE__*/function () {
           opcode: 'xToLng',
           blockType: BlockType.REPORTER,
           text: formatMessage({
-            id: 'gsiMap.xToLng',
+            id: 'map.xToLng',
             default: 'x座標 [X] の経度',
             description: 'longitude at an x position on the stage'
           }),
@@ -1070,7 +1070,7 @@ var ExtensionBlocks = /*#__PURE__*/function () {
           opcode: 'yToLat',
           blockType: BlockType.REPORTER,
           text: formatMessage({
-            id: 'gsiMap.yToLat',
+            id: 'map.yToLat',
             default: 'y座標 [Y] の緯度',
             description: 'latitude at a y position on the stage'
           }),
@@ -1084,7 +1084,7 @@ var ExtensionBlocks = /*#__PURE__*/function () {
           opcode: 'getCurrentLocation',
           blockType: BlockType.COMMAND,
           text: formatMessage({
-            id: 'gsiMap.getCurrentLocation',
+            id: 'map.getCurrentLocation',
             default: '現在地を取得する',
             description: 'get the current location of the device'
           })
@@ -1092,7 +1092,7 @@ var ExtensionBlocks = /*#__PURE__*/function () {
           opcode: 'currentLatReporter',
           blockType: BlockType.REPORTER,
           text: formatMessage({
-            id: 'gsiMap.currentLat',
+            id: 'map.currentLat',
             default: '現在地の緯度',
             description: 'latitude of the current location'
           })
@@ -1100,7 +1100,7 @@ var ExtensionBlocks = /*#__PURE__*/function () {
           opcode: 'currentLngReporter',
           blockType: BlockType.REPORTER,
           text: formatMessage({
-            id: 'gsiMap.currentLng',
+            id: 'map.currentLng',
             default: '現在地の経度',
             description: 'longitude of the current location'
           })
@@ -1108,7 +1108,7 @@ var ExtensionBlocks = /*#__PURE__*/function () {
           opcode: 'distance',
           blockType: BlockType.REPORTER,
           text: formatMessage({
-            id: 'gsiMap.distance',
+            id: 'map.distance',
             default: '緯度 [LAT1] 経度 [LNG1] から 緯度 [LAT2] 経度 [LNG2] までの距離(km)',
             description: 'distance between two points in kilometers'
           }),
@@ -1134,7 +1134,7 @@ var ExtensionBlocks = /*#__PURE__*/function () {
           opcode: 'elevation',
           blockType: BlockType.REPORTER,
           text: formatMessage({
-            id: 'gsiMap.elevation',
+            id: 'map.elevation',
             default: '緯度 [LAT] 経度 [LNG] の標高(m)',
             description: 'elevation at a point in meters'
           }),
@@ -1168,7 +1168,7 @@ var ExtensionBlocks = /*#__PURE__*/function () {
       // offers only the standard map. The block is kept for compatibility.
       return [{
         text: formatMessage({
-          id: 'gsiMap.mapType.std',
+          id: 'map.mapType.std',
           default: '標準地図',
           description: 'standard map'
         }),
@@ -1553,7 +1553,7 @@ var ExtensionBlocks = /*#__PURE__*/function () {
     key: "EXTENSION_NAME",
     get: function get() {
       return formatMessage({
-        id: 'gsiMap.name',
+        id: 'map.name',
         default: '地図 (Map)',
         description: 'name of the extension'
       });
@@ -1590,4 +1590,4 @@ var ExtensionBlocks = /*#__PURE__*/function () {
 }();
 
 export { ExtensionBlocks as blockClass, entry };
-//# sourceMappingURL=gsiMap.mjs.map
+//# sourceMappingURL=map.mjs.map

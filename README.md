@@ -53,7 +53,7 @@ This extension can be used with other extension in [Xcratch](https://xcratch.git
 3. Select 'Extension Loader' extension
 4. Type the module URL in the input field 
 ```
-https://asondemita.github.io/xcx-map/dist/gsiMap.mjs
+https://asondemita.github.io/xcx-map/dist/map.mjs
 ```
 5. Click 'OK' button
 6. Now you can use the blocks of this extension
@@ -164,13 +164,13 @@ All build versions are recorded in `dist/versions.json`:
 
 ```json
 {
-  "extensionId": "gsiMap",
+  "extensionId": "map",
   "latest": "1.0.0",
   "versions": [
     {
       "version": "1.0.0",
       "buildDate": "2025-10-19T12:34:56.789Z",
-      "module": "1.0.0/gsiMap.mjs"
+      "module": "1.0.0/map.mjs"
     }
   ]
 }
