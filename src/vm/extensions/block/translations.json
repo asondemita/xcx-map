@@ -18,10 +18,7 @@
     "gsiMap.currentLng": "current longitude",
     "gsiMap.distance": "distance from latitude [LAT1] longitude [LNG1] to latitude [LAT2] longitude [LNG2] (km)",
     "gsiMap.elevation": "elevation at latitude [LAT] longitude [LNG] (m)",
-    "gsiMap.mapType.std": "standard",
-    "gsiMap.mapType.pale": "pale",
-    "gsiMap.mapType.photo": "aerial photo",
-    "gsiMap.mapType.relief": "color relief"
+    "gsiMap.mapType.std": "standard"
   },
   "ja": {
     "gsiMap.name": "地図 (Map)",
@@ -42,10 +39,7 @@
     "gsiMap.currentLng": "現在地の経度",
     "gsiMap.distance": "緯度 [LAT1] 経度 [LNG1] から 緯度 [LAT2] 経度 [LNG2] までの距離(km)",
     "gsiMap.elevation": "緯度 [LAT] 経度 [LNG] の標高(m)",
-    "gsiMap.mapType.std": "標準地図",
-    "gsiMap.mapType.pale": "淡色地図",
-    "gsiMap.mapType.photo": "空中写真",
-    "gsiMap.mapType.relief": "色別標高図"
+    "gsiMap.mapType.std": "標準地図"
   },
   "ja-Hira": {
     "gsiMap.name": "ちず (Map)",
@@ -66,9 +60,6 @@
     "gsiMap.currentLng": "げんざいちのけいど",
     "gsiMap.distance": "いど [LAT1] けいど [LNG1] から いど [LAT2] けいど [LNG2] までのきょり(km)",
     "gsiMap.elevation": "いど [LAT] けいど [LNG] のひょうこう(m)",
-    "gsiMap.mapType.std": "ひょうじゅんちず",
-    "gsiMap.mapType.pale": "たんしょくちず",
-    "gsiMap.mapType.photo": "くうちゅうしゃしん",
-    "gsiMap.mapType.relief": "いろべつひょうこうず"
+    "gsiMap.mapType.std": "ひょうじゅんちず"
   }
 }

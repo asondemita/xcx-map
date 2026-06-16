@@ -1,6 +1,6 @@
-name: xcx-map
+name: xcx-geo
 version: 1.0.0
-description: APM project for xcx-map
+description: APM project for xcx-geo
 dependencies:
   apm:
   - xcratch/xcratch-skills

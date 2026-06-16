@@ -33,7 +33,7 @@ const EXTENSION_ID = 'gsiMap';
  * When it was loaded as a module, 'extensionURL' will be replaced a URL which is retrieved from.
  * @type {string}
  */
-let extensionURL = 'https://tfabworks.github.io/xcx-map/dist/gsiMap.mjs';
+let extensionURL = 'https://asondemita.github.io/xcx-geo/dist/gsiMap.mjs';
 
 /**
  * Scratch stage size in stage units (native renderer resolution).
@@ -49,12 +49,13 @@ const STAGE_HEIGHT = 360;
 const TILE_SIZE = 256;
 
 /**
- * Base URL of GSI (Geospatial Information Authority of Japan) tiles.
- * These tiles need no API key and have no domain restriction.
- * Attribution to the GSI is required when used.
+ * Base URL of OpenStreetMap standard raster tiles.
+ * These tiles need no API key. Attribution to OpenStreetMap
+ * contributors is required by the Tile Usage Policy:
+ * https://operations.osmfoundation.org/policies/tiles/
  * @type {string}
  */
-const GSI_TILE_BASE = 'https://cyberjapandata.gsi.go.jp/xyz';
+const OSM_TILE_BASE = 'https://tile.openstreetmap.org';
 
 /**
  * GSI elevation API endpoint (latitude/longitude -> elevation in meters).
@@ -69,7 +70,7 @@ const GSI_ELEVATION_API = 'https://cyberjapandata2.gsi.go.jp/general/dem/scripts
 const MERCATOR_MAX_LAT = 85.05112878;
 
 const MIN_ZOOM = 0;
-const MAX_ZOOM = 18;
+const MAX_ZOOM = 19;
 
 /**
  * Scratch 3.0 blocks which draw maps using GSI raster tiles.
@@ -384,6 +385,8 @@ class ExtensionBlocks {
      * @returns {Array} - items for the map type menu.
      */
     getMapTypeMenu () {
+        // OpenStreetMap standard tiles provide a single layer, so the menu
+        // offers only the standard map. The block is kept for compatibility.
         return [
             {
                 text: formatMessage({
@@ -392,30 +395,6 @@ class ExtensionBlocks {
                     description: 'standard map'
                 }),
                 value: 'std'
-            },
-            {
-                text: formatMessage({
-                    id: 'gsiMap.mapType.pale',
-                    default: '淡色地図',
-                    description: 'pale map'
-                }),
-                value: 'pale'
-            },
-            {
-                text: formatMessage({
-                    id: 'gsiMap.mapType.photo',
-                    default: '空中写真',
-                    description: 'aerial photo'
-                }),
-                value: 'seamlessphoto'
-            },
-            {
-                text: formatMessage({
-                    id: 'gsiMap.mapType.relief',
-                    default: '色別標高図',
-                    description: 'color relief map'
-                }),
-                value: 'relief'
             }
         ];
     }
@@ -522,11 +501,11 @@ class ExtensionBlocks {
     }
 
     /**
-     * Draw the GSI attribution required by the terms of use.
+     * Draw the OpenStreetMap attribution required by the Tile Usage Policy.
      * @param {CanvasRenderingContext2D} ctx - drawing context.
      */
     _drawAttribution (ctx) {
-        const label = '出典: 国土地理院';
+        const label = '© OpenStreetMap contributors';
         ctx.font = '10px sans-serif';
         const padding = 3;
         const width = ctx.measureText(label).width + (padding * 2);
@@ -562,7 +541,10 @@ class ExtensionBlocks {
             for (let ty = tyMin; ty <= tyMax; ty++) {
                 if (ty < 0 || ty >= n) continue;
                 const wrappedX = ((tx % n) + n) % n;
-                const url = `${GSI_TILE_BASE}/${this.mapType}/${zoom}/${wrappedX}/${ty}.png`;
+                // OSM standard tiles have a single layer (no map-type path
+                // segment). The map-type block/menu are kept for block
+                // compatibility but always resolve to OSM standard tiles.
+                const url = `${OSM_TILE_BASE}/${zoom}/${wrappedX}/${ty}.png`;
                 const dx = Math.round((tx * TILE_SIZE) - left);
                 const dy = Math.round((ty * TILE_SIZE) - top);
                 jobs.push(this._loadTile(url).then(img => ({img, dx, dy})));

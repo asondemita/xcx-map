@@ -26,23 +26,23 @@ const entry = {
         });
     },
     extensionId: 'gsiMap',
-    extensionURL: 'https://tfabworks.github.io/xcx-map/dist/gsiMap.mjs',
-    collaborator: 'tfabworks',
+    extensionURL: 'https://asondemita.github.io/xcx-geo/dist/gsiMap.mjs',
+    collaborator: 'asondemita',
     iconURL: iconURL,
     insetIconURL: insetIconURL,
     get description () {
         return `${formatMessage({
-            defaultMessage: '地理院タイルで地図を描きます。APIキー不要・どのドメインでも使えます。',
+            defaultMessage: 'OpenStreetMap で地図を描きます。APIキー不要・どのドメインでも使えます。',
             description: 'Description for this extension',
             id: 'gsiMap.entry.description'
         })} (${version})`;
     },
-    tags: ['map', 'gsi'],
+    tags: ['map', 'osm'],
     featured: true,
     disabled: false,
     bluetoothRequired: false,
     internetConnectionRequired: true,
-    helpLink: 'https://tfabworks.github.io/xcx-map/',
+    helpLink: 'https://asondemita.github.io/xcx-geo/',
     setFormatMessage: formatter => {
         formatMessage = formatter;
     },

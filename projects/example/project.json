@@ -147,7 +147,7 @@
     "extensionURLs": [
         [
             "gsiMap",
-            "https://tfabworks.github.io/xcx-map/dist/gsiMap.mjs"
+            "https://asondemita.github.io/xcx-geo/dist/gsiMap.mjs"
         ]
     ],
     "meta": {

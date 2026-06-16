@@ -45,23 +45,23 @@ var entry = {
     });
   },
   extensionId: 'gsiMap',
-  extensionURL: 'https://tfabworks.github.io/xcx-map/dist/gsiMap.mjs',
-  collaborator: 'tfabworks',
+  extensionURL: 'https://asondemita.github.io/xcx-geo/dist/gsiMap.mjs',
+  collaborator: 'asondemita',
   iconURL: img$2,
   insetIconURL: img$1,
   get description() {
     return "".concat(formatMessage$1({
-      defaultMessage: '地理院タイルで地図を描きます。APIキー不要・どのドメインでも使えます。',
+      defaultMessage: 'OpenStreetMap で地図を描きます。APIキー不要・どのドメインでも使えます。',
       description: 'Description for this extension',
       id: 'gsiMap.entry.description'
     }), " (").concat(version, ")");
   },
-  tags: ['map', 'gsi'],
+  tags: ['map', 'osm'],
   featured: true,
   disabled: false,
   bluetoothRequired: false,
   internetConnectionRequired: true,
-  helpLink: 'https://tfabworks.github.io/xcx-map/',
+  helpLink: 'https://asondemita.github.io/xcx-geo/',
   setFormatMessage: function setFormatMessage(formatter) {
     formatMessage$1 = formatter;
   },
@@ -741,10 +741,7 @@ var en = {
 	"gsiMap.currentLng": "current longitude",
 	"gsiMap.distance": "distance from latitude [LAT1] longitude [LNG1] to latitude [LAT2] longitude [LNG2] (km)",
 	"gsiMap.elevation": "elevation at latitude [LAT] longitude [LNG] (m)",
-	"gsiMap.mapType.std": "standard",
-	"gsiMap.mapType.pale": "pale",
-	"gsiMap.mapType.photo": "aerial photo",
-	"gsiMap.mapType.relief": "color relief"
+	"gsiMap.mapType.std": "standard"
 };
 var ja = {
 	"gsiMap.name": "地図 (Map)",
@@ -765,10 +762,7 @@ var ja = {
 	"gsiMap.currentLng": "現在地の経度",
 	"gsiMap.distance": "緯度 [LAT1] 経度 [LNG1] から 緯度 [LAT2] 経度 [LNG2] までの距離(km)",
 	"gsiMap.elevation": "緯度 [LAT] 経度 [LNG] の標高(m)",
-	"gsiMap.mapType.std": "標準地図",
-	"gsiMap.mapType.pale": "淡色地図",
-	"gsiMap.mapType.photo": "空中写真",
-	"gsiMap.mapType.relief": "色別標高図"
+	"gsiMap.mapType.std": "標準地図"
 };
 var translations = {
 	en: en,
@@ -792,10 +786,7 @@ var translations = {
 	"gsiMap.currentLng": "げんざいちのけいど",
 	"gsiMap.distance": "いど [LAT1] けいど [LNG1] から いど [LAT2] けいど [LNG2] までのきょり(km)",
 	"gsiMap.elevation": "いど [LAT] けいど [LNG] のひょうこう(m)",
-	"gsiMap.mapType.std": "ひょうじゅんちず",
-	"gsiMap.mapType.pale": "たんしょくちず",
-	"gsiMap.mapType.photo": "くうちゅうしゃしん",
-	"gsiMap.mapType.relief": "いろべつひょうこうず"
+	"gsiMap.mapType.std": "ひょうじゅんちず"
 }
 };
 
@@ -832,7 +823,7 @@ var EXTENSION_ID = 'gsiMap';
  * When it was loaded as a module, 'extensionURL' will be replaced a URL which is retrieved from.
  * @type {string}
  */
-var extensionURL = 'https://tfabworks.github.io/xcx-map/dist/gsiMap.mjs';
+var extensionURL = 'https://asondemita.github.io/xcx-geo/dist/gsiMap.mjs';
 
 /**
  * Scratch stage size in stage units (native renderer resolution).
@@ -848,12 +839,13 @@ var STAGE_HEIGHT = 360;
 var TILE_SIZE = 256;
 
 /**
- * Base URL of GSI (Geospatial Information Authority of Japan) tiles.
- * These tiles need no API key and have no domain restriction.
- * Attribution to the GSI is required when used.
+ * Base URL of OpenStreetMap standard raster tiles.
+ * These tiles need no API key. Attribution to OpenStreetMap
+ * contributors is required by the Tile Usage Policy:
+ * https://operations.osmfoundation.org/policies/tiles/
  * @type {string}
  */
-var GSI_TILE_BASE = 'https://cyberjapandata.gsi.go.jp/xyz';
+var OSM_TILE_BASE = 'https://tile.openstreetmap.org';
 
 /**
  * GSI elevation API endpoint (latitude/longitude -> elevation in meters).
@@ -867,7 +859,7 @@ var GSI_ELEVATION_API = 'https://cyberjapandata2.gsi.go.jp/general/dem/scripts/g
  */
 var MERCATOR_MAX_LAT = 85.05112878;
 var MIN_ZOOM = 0;
-var MAX_ZOOM = 18;
+var MAX_ZOOM = 19;
 
 /**
  * Scratch 3.0 blocks which draw maps using GSI raster tiles.
@@ -1172,6 +1164,8 @@ var ExtensionBlocks = /*#__PURE__*/function () {
   }, {
     key: "getMapTypeMenu",
     value: function getMapTypeMenu() {
+      // OpenStreetMap standard tiles provide a single layer, so the menu
+      // offers only the standard map. The block is kept for compatibility.
       return [{
         text: formatMessage({
           id: 'gsiMap.mapType.std',
@@ -1179,27 +1173,6 @@ var ExtensionBlocks = /*#__PURE__*/function () {
           description: 'standard map'
         }),
         value: 'std'
-      }, {
-        text: formatMessage({
-          id: 'gsiMap.mapType.pale',
-          default: '淡色地図',
-          description: 'pale map'
-        }),
-        value: 'pale'
-      }, {
-        text: formatMessage({
-          id: 'gsiMap.mapType.photo',
-          default: '空中写真',
-          description: 'aerial photo'
-        }),
-        value: 'seamlessphoto'
-      }, {
-        text: formatMessage({
-          id: 'gsiMap.mapType.relief',
-          default: '色別標高図',
-          description: 'color relief map'
-        }),
-        value: 'relief'
       }];
     }
 
@@ -1325,13 +1298,13 @@ var ExtensionBlocks = /*#__PURE__*/function () {
     }
 
     /**
-     * Draw the GSI attribution required by the terms of use.
+     * Draw the OpenStreetMap attribution required by the Tile Usage Policy.
      * @param {CanvasRenderingContext2D} ctx - drawing context.
      */
   }, {
     key: "_drawAttribution",
     value: function _drawAttribution(ctx) {
-      var label = '出典: 国土地理院';
+      var label = '© OpenStreetMap contributors';
       ctx.font = '10px sans-serif';
       var padding = 3;
       var width = ctx.measureText(label).width + padding * 2;
@@ -1368,7 +1341,10 @@ var ExtensionBlocks = /*#__PURE__*/function () {
         var _loop = function _loop() {
           if (ty < 0 || ty >= n) return 1; // continue
           var wrappedX = (tx % n + n) % n;
-          var url = "".concat(GSI_TILE_BASE, "/").concat(_this.mapType, "/").concat(zoom, "/").concat(wrappedX, "/").concat(ty, ".png");
+          // OSM standard tiles have a single layer (no map-type path
+          // segment). The map-type block/menu are kept for block
+          // compatibility but always resolve to OSM standard tiles.
+          var url = "".concat(OSM_TILE_BASE, "/").concat(zoom, "/").concat(wrappedX, "/").concat(ty, ".png");
           var dx = Math.round(tx * TILE_SIZE - left);
           var dy = Math.round(ty * TILE_SIZE - top);
           jobs.push(_this._loadTile(url).then(function (img) {

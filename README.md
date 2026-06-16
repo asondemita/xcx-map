@@ -1,8 +1,8 @@
 # 地図 (Map)
 
-地理院タイル（国土地理院の地図タイル）を使って、Scratch のステージに地図を描く [Xcratch](https://xcratch.github.io/) 拡張です。
+OpenStreetMap の地図タイルを使って、Scratch のステージに地図を描く [Xcratch](https://xcratch.github.io/) 拡張です。
 
-[geolonia/x-geo-scratch](https://github.com/geolonia/x-geo-scratch) と同じ「ラスタタイルをステージへ直接描く」軽量方式ですが、地図ソースを **国土地理院の地理院タイル** に置き換えることで、**APIキー不要・ドメイン制限なし**でどのウェブサイトからでも無料で使えます（出典の明記が条件）。日本国内の地図に特化しています。
+[geolonia/x-geo-scratch](https://github.com/geolonia/x-geo-scratch) と同じ「ラスタタイルをステージへ直接描く」軽量方式ですが、地図ソースを **OpenStreetMap の標準タイル** にすることで、**APIキー不要・ドメイン制限なし**でどのウェブサイトからでも無料で使えます（出典の明記が条件）。標高ブロックは引き続き国土地理院の標高APIを利用するため、標高は日本国内に特化しています。
 
 地図は `renderer.createBitmapSkin()` でステージの背面レイヤーに描かれるため、スプライトは地図の上に重なって表示されます。
 
@@ -14,7 +14,7 @@
 - `ズームを () にする` / `ズームを () ずつ変える`
 
 **地図の種類の切替**
-- `地図の種類を () にする` … 標準地図 / 淡色地図 / 空中写真 / 色別標高図
+- `地図の種類を () にする` … 標準地図（OpenStreetMap の標準タイル。互換のためブロックは残しています）
 
 **地図の状態**
 - `地図の中心の緯度` / `地図の中心の経度` / `地図のズーム`
@@ -30,12 +30,19 @@
 
 ## 🗾 地図データの出典
 
-このプロジェクトは [地理院タイル](https://maps.gsi.go.jp/development/ichiran.html) を利用しています。利用にあたっては国土地理院の[利用規約](https://www.gsi.go.jp/kikakuchousei/kikakuchousei40182.html)に従い、**出典「国土地理院」の明記**が必要です（本拡張は地図右下に自動で表示します）。標高は[標高を求めるプログラム](https://maps.gsi.go.jp/development/elevation_s.html)を利用しています。
+このプロジェクトの地図タイルは [OpenStreetMap](https://www.openstreetmap.org/) を利用しています。地図データは © OpenStreetMap contributors（[ODbL](https://www.openstreetmap.org/copyright)）で、**出典「© OpenStreetMap contributors」の明記**が必要です（本拡張は地図右下に自動で表示します）。標高は国土地理院の[標高を求めるプログラム](https://maps.gsi.go.jp/development/elevation_s.html)を利用しているため、標高ブロックは日本国内のみ有効です。
+
+### ⚠️ タイル利用についての注意（過剰利用時のブロック）
+
+地図タイルは OpenStreetMap Foundation が運用する公式タイルサーバー（`tile.openstreetmap.org`）から取得しています。これは [OpenStreetMap タイル利用ポリシー](https://operations.osmfoundation.org/policies/tiles/) に基づくボランティア提供のリソースです。
+
+- **過剰・不適切な利用があった場合、予告なくアクセスがブロックされることがあります。** 多人数で同時に大量のタイルを読み込むような使い方（授業での一斉アクセスなど）は、サービスを劣化させ、ブロックの対象となり得ます。
+- 本拡張は出典表示・タイルのキャッシュなどポリシー上の要件を満たすように作られていますが、**安定運用・大規模利用が必要な場合は、商用タイルプロバイダ（要APIキー）や自前のタイルサーバーの利用を検討してください。**
 
 ## ✨ What You Can Do With This Extension
 
-Play [Example Project](https://xcratch.github.io/editor/#https://tfabworks.github.io/xcx-map/projects/example.sb3) to look at what you can do with "地図 (Map)" extension. 
-<iframe src="https://xcratch.github.io/editor/player#https://tfabworks.github.io/xcx-map/projects/example.sb3" width="540px" height="460px"></iframe>
+Play [Example Project](https://xcratch.github.io/editor/#https://asondemita.github.io/xcx-geo/projects/example.sb3) to look at what you can do with "地図 (Map)" extension. 
+<iframe src="https://xcratch.github.io/editor/player#https://asondemita.github.io/xcx-geo/projects/example.sb3" width="540px" height="460px"></iframe>
 
 
 ## How to Use in Xcratch
@@ -46,7 +53,7 @@ This extension can be used with other extension in [Xcratch](https://xcratch.git
 3. Select 'Extension Loader' extension
 4. Type the module URL in the input field 
 ```
-https://tfabworks.github.io/xcx-map/dist/gsiMap.mjs
+https://asondemita.github.io/xcx-geo/dist/gsiMap.mjs
 ```
 5. Click 'OK' button
 6. Now you can use the blocks of this extension
@@ -172,9 +179,9 @@ All build versions are recorded in `dist/versions.json`:
 
 ## 🏠 Home Page
 
-Open this page from [https://tfabworks.github.io/xcx-map/](https://tfabworks.github.io/xcx-map/)
+Open this page from [https://asondemita.github.io/xcx-geo/](https://asondemita.github.io/xcx-geo/)
 
 
 ## 🤝 Contributing
 
-Contributions, issues and feature requests are welcome!<br />Feel free to check [issues page](https://github.com/tfabworks/xcx-map/issues). 
+Contributions, issues and feature requests are welcome!<br />Feel free to check [issues page](https://github.com/asondemita/xcx-geo/issues). 

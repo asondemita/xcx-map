@@ -29,7 +29,7 @@ describe("blockClass", () => {
     test("zoom is clamped to the supported range", () => {
         const block = new blockClass(runtime);
         block.setZoom({ ZOOM: 99 });
-        expect(block.mapZoom()).toBe(18);
+        expect(block.mapZoom()).toBe(19);
         block.setZoom({ ZOOM: -5 });
         expect(block.mapZoom()).toBe(0);
     });
