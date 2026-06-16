@@ -138,6 +138,9 @@ class ExtensionBlocks {
         // Points collected for "fit map to all points".
         this._points = [];
 
+        // Map layer transparency (ghost effect: 0 = opaque, 100 = invisible).
+        this._opacity = 0;
+
         // Result of "get current location".
         this.currentLat = '';
         this.currentLng = '';
@@ -206,17 +209,57 @@ class ExtensionBlocks {
                     }
                 },
                 {
+                    opcode: 'panHorizontal',
+                    blockType: BlockType.COMMAND,
+                    text: formatMessage({
+                        id: 'map.panHorizontal',
+                        default: '地図を横に [PIXELS] ピクセル移動する',
+                        description: 'pan the map horizontally by pixels'
+                    }),
+                    arguments: {
+                        PIXELS: {type: ArgumentType.NUMBER, defaultValue: 50}
+                    }
+                },
+                {
+                    opcode: 'panVertical',
+                    blockType: BlockType.COMMAND,
+                    text: formatMessage({
+                        id: 'map.panVertical',
+                        default: '地図を縦に [PIXELS] ピクセル移動する',
+                        description: 'pan the map vertically by pixels'
+                    }),
+                    arguments: {
+                        PIXELS: {type: ArgumentType.NUMBER, defaultValue: 50}
+                    }
+                },
+                {
+                    opcode: 'setOpacity',
+                    blockType: BlockType.COMMAND,
+                    text: formatMessage({
+                        id: 'map.setOpacity',
+                        default: '地図の透明度を [OPACITY] にする',
+                        description: 'set the map layer transparency'
+                    }),
+                    arguments: {
+                        OPACITY: {type: ArgumentType.NUMBER, defaultValue: 50}
+                    }
+                },
+                {
                     opcode: 'addPoint',
                     blockType: BlockType.COMMAND,
                     text: formatMessage({
                         id: 'map.addPoint',
-                        default: '地点 緯度 [LAT] 経度 [LNG] に [COLOR] のピンを立てる',
+                        default: '緯度 [LAT] 経度 [LNG] に [COLOR] のピンを立てる',
                         description: 'drop a pin at a point'
                     }),
                     arguments: {
                         LAT: {type: ArgumentType.NUMBER, defaultValue: 35.681236},
                         LNG: {type: ArgumentType.NUMBER, defaultValue: 139.767125},
-                        COLOR: {type: ArgumentType.COLOR, defaultValue: '#e53935'}
+                        COLOR: {
+                            type: ArgumentType.STRING,
+                            menu: 'pinColorMenu',
+                            defaultValue: '#e53935'
+                        }
                     }
                 },
                 {
@@ -224,8 +267,8 @@ class ExtensionBlocks {
                     blockType: BlockType.COMMAND,
                     text: formatMessage({
                         id: 'map.clearPoints',
-                        default: '地点をすべて消す',
-                        description: 'clear all collected points'
+                        default: 'ピンを全て消す',
+                        description: 'clear all pins'
                     })
                 },
                 {
@@ -233,8 +276,8 @@ class ExtensionBlocks {
                     blockType: BlockType.COMMAND,
                     text: formatMessage({
                         id: 'map.fitToPoints',
-                        default: 'すべての地点が見えるように地図を合わせる',
-                        description: 'move and zoom the map so all points are visible'
+                        default: '全てのピンが見えるように地図を合わせる',
+                        description: 'move and zoom the map so all pins are visible'
                     })
                 },
                 '---',
@@ -289,8 +332,34 @@ class ExtensionBlocks {
                         LNG2: {type: ArgumentType.NUMBER, defaultValue: 135.495951}
                     }
                 }
-            ]
+            ],
+            menus: {
+                pinColorMenu: {
+                    acceptReporters: false,
+                    items: 'getPinColorMenu'
+                }
+            }
         };
+    }
+
+    /**
+     * @returns {Array} - items for the pin color menu (label + hex value).
+     */
+    getPinColorMenu () {
+        const colors = [
+            {id: 'map.color.red', default: '赤', value: '#e53935'},
+            {id: 'map.color.yellow', default: '黄', value: '#fdd835'},
+            {id: 'map.color.blue', default: '青', value: '#1e88e5'},
+            {id: 'map.color.green', default: '緑', value: '#43a047'},
+            {id: 'map.color.orange', default: '橙', value: '#fb8c00'},
+            {id: 'map.color.purple', default: '紫', value: '#8e24aa'},
+            {id: 'map.color.brown', default: '茶', value: '#6d4c41'},
+            {id: 'map.color.black', default: '黒', value: '#000000'}
+        ];
+        return colors.map(c => ({
+            text: formatMessage({id: c.id, default: c.default, description: 'pin color name'}),
+            value: c.value
+        }));
     }
 
     // ---- Web Mercator helpers ----
@@ -371,6 +440,7 @@ class ExtensionBlocks {
         // The 'background' layer group is drawn behind every sprite.
         this._drawableId = renderer.createDrawable('background');
         renderer.updateDrawableSkinId(this._drawableId, this._skinId);
+        renderer.updateDrawableEffect(this._drawableId, 'ghost', this._opacity);
         return true;
     }
 
@@ -538,6 +608,30 @@ class ExtensionBlocks {
     changeZoom (args) {
         this.zoom = this._clampZoom(this.zoom + Cast.toNumber(args.ZOOM));
         return this._redraw();
+    }
+
+    // Positive PIXELS moves the map center east (right).
+    panHorizontal (args) {
+        const dx = Cast.toNumber(args.PIXELS);
+        const worldX = this._lngToWorldX(this.centerLng, this.zoom) + dx;
+        this.centerLng = this._worldXToLng(worldX, this.zoom);
+        return this._redraw();
+    }
+
+    // Positive PIXELS moves the map center north (up).
+    panVertical (args) {
+        const dy = Cast.toNumber(args.PIXELS);
+        const worldY = this._latToWorldY(this.centerLat, this.zoom) - dy;
+        this.centerLat = this._worldYToLat(worldY, this.zoom);
+        return this._redraw();
+    }
+
+    // Transparency 0 = opaque, 100 = fully transparent (Scratch ghost effect).
+    setOpacity (args) {
+        this._opacity = Math.max(0, Math.min(100, Cast.toNumber(args.OPACITY)));
+        if (!this._ensureSkin()) return;
+        this.runtime.renderer.updateDrawableEffect(this._drawableId, 'ghost', this._opacity);
+        this.runtime.requestRedraw();
     }
 
     // ---- Blocks: fit to points ----

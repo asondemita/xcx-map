@@ -42,6 +42,34 @@ describe("blockClass", () => {
         expect(block.zoom).toBe(0);
     });
 
+    test("panning moves the center east and north for positive pixels", () => {
+        const block = new blockClass(runtime);
+        const lng0 = block.centerLng;
+        const lat0 = block.centerLat;
+        block.panHorizontal({ PIXELS: 100 });
+        expect(block.centerLng).toBeGreaterThan(lng0); // east
+        block.panVertical({ PIXELS: 100 });
+        expect(block.centerLat).toBeGreaterThan(lat0); // north
+    });
+
+    test("opacity is clamped to 0..100", () => {
+        const block = new blockClass(runtime);
+        block.setOpacity({ OPACITY: 250 });
+        expect(block._opacity).toBe(100);
+        block.setOpacity({ OPACITY: -40 });
+        expect(block._opacity).toBe(0);
+    });
+
+    test("pin color menu lists eight colors as hex values", () => {
+        const block = new blockClass(runtime);
+        const menu = block.getPinColorMenu();
+        expect(menu).toHaveLength(8);
+        for (const item of menu) {
+            expect(item.value).toMatch(/^#[0-9a-f]{6}$/i);
+            expect(typeof item.text).toBe("string");
+        }
+    });
+
     test("addPoint stores latitude, longitude and color", () => {
         const block = new blockClass(runtime);
         block.clearPoints();
