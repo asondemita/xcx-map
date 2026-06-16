@@ -171,13 +171,12 @@ class ExtensionBlocks {
                     blockType: BlockType.COMMAND,
                     text: formatMessage({
                         id: 'map.showMapAt',
-                        default: '緯度 [LAT] 経度 [LNG] ズーム [ZOOM] の地図を表示する',
+                        default: '緯度 [LAT] 経度 [LNG] の地図を表示する',
                         description: 'display a map at the given location'
                     }),
                     arguments: {
                         LAT: {type: ArgumentType.NUMBER, defaultValue: 35.681236},
-                        LNG: {type: ArgumentType.NUMBER, defaultValue: 139.767125},
-                        ZOOM: {type: ArgumentType.NUMBER, defaultValue: 13}
+                        LNG: {type: ArgumentType.NUMBER, defaultValue: 139.767125}
                     }
                 },
                 {
@@ -593,7 +592,6 @@ class ExtensionBlocks {
     showMapAt (args) {
         this.centerLat = Cast.toNumber(args.LAT);
         this.centerLng = Cast.toNumber(args.LNG);
-        this.zoom = this._clampZoom(Cast.toNumber(args.ZOOM));
         return this._redraw();
     }
 

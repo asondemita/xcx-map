@@ -1,7 +1,7 @@
 {
   "en": {
     "map.name": "Map",
-    "map.showMapAt": "show map at latitude [LAT] longitude [LNG] zoom [ZOOM]",
+    "map.showMapAt": "show map at latitude [LAT] longitude [LNG]",
     "map.showMapByKeyword": "show map of [KEYWORD]",
     "map.setZoom": "set zoom to [ZOOM]",
     "map.changeZoom": "change zoom by [ZOOM]",
@@ -25,7 +25,7 @@
   },
   "ja": {
     "map.name": "地図",
-    "map.showMapAt": "緯度 [LAT] 経度 [LNG] ズーム [ZOOM] の地図を表示する",
+    "map.showMapAt": "緯度 [LAT] 経度 [LNG] の地図を表示する",
     "map.showMapByKeyword": "[KEYWORD] の地図を表示する",
     "map.setZoom": "ズームを [ZOOM] にする",
     "map.changeZoom": "ズームを [ZOOM] ずつ変える",
@@ -49,7 +49,7 @@
   },
   "ja-Hira": {
     "map.name": "ちず",
-    "map.showMapAt": "いど [LAT] けいど [LNG] ズーム [ZOOM] のちずをひょうじする",
+    "map.showMapAt": "いど [LAT] けいど [LNG] のちずをひょうじする",
     "map.showMapByKeyword": "[KEYWORD] のちずをひょうじする",
     "map.setZoom": "ズームを [ZOOM] にする",
     "map.changeZoom": "ズームを [ZOOM] ずつかえる",

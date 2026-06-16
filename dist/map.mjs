@@ -724,7 +724,7 @@ var Cast = /*@__PURE__*/getDefaultExportFromCjs(castExports);
 
 var en = {
 	"map.name": "Map",
-	"map.showMapAt": "show map at latitude [LAT] longitude [LNG] zoom [ZOOM]",
+	"map.showMapAt": "show map at latitude [LAT] longitude [LNG]",
 	"map.showMapByKeyword": "show map of [KEYWORD]",
 	"map.setZoom": "set zoom to [ZOOM]",
 	"map.changeZoom": "change zoom by [ZOOM]",
@@ -748,7 +748,7 @@ var en = {
 };
 var ja = {
 	"map.name": "地図",
-	"map.showMapAt": "緯度 [LAT] 経度 [LNG] ズーム [ZOOM] の地図を表示する",
+	"map.showMapAt": "緯度 [LAT] 経度 [LNG] の地図を表示する",
 	"map.showMapByKeyword": "[KEYWORD] の地図を表示する",
 	"map.setZoom": "ズームを [ZOOM] にする",
 	"map.changeZoom": "ズームを [ZOOM] ずつ変える",
@@ -775,7 +775,7 @@ var translations = {
 	ja: ja,
 	"ja-Hira": {
 	"map.name": "ちず",
-	"map.showMapAt": "いど [LAT] けいど [LNG] ズーム [ZOOM] のちずをひょうじする",
+	"map.showMapAt": "いど [LAT] けいど [LNG] のちずをひょうじする",
 	"map.showMapByKeyword": "[KEYWORD] のちずをひょうじする",
 	"map.setZoom": "ズームを [ZOOM] にする",
 	"map.changeZoom": "ズームを [ZOOM] ずつかえる",
@@ -926,7 +926,7 @@ var ExtensionBlocks = /*#__PURE__*/function () {
           blockType: BlockType.COMMAND,
           text: formatMessage({
             id: 'map.showMapAt',
-            default: '緯度 [LAT] 経度 [LNG] ズーム [ZOOM] の地図を表示する',
+            default: '緯度 [LAT] 経度 [LNG] の地図を表示する',
             description: 'display a map at the given location'
           }),
           arguments: {
@@ -937,10 +937,6 @@ var ExtensionBlocks = /*#__PURE__*/function () {
             LNG: {
               type: ArgumentType.NUMBER,
               defaultValue: 139.767125
-            },
-            ZOOM: {
-              type: ArgumentType.NUMBER,
-              defaultValue: 13
             }
           }
         }, {
@@ -1464,7 +1460,6 @@ var ExtensionBlocks = /*#__PURE__*/function () {
     value: function showMapAt(args) {
       this.centerLat = Cast.toNumber(args.LAT);
       this.centerLng = Cast.toNumber(args.LNG);
-      this.zoom = this._clampZoom(Cast.toNumber(args.ZOOM));
       return this._redraw();
     }
 
