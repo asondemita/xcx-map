@@ -726,6 +726,9 @@ var en = {
 	"map.name": "Map",
 	"map.showMapAt": "show map at latitude [LAT] longitude [LNG]",
 	"map.showMapByKeyword": "show map of [KEYWORD]",
+	"map.setMapType": "set map type to [TYPE]",
+	"map.mapType.pale": "pale (GSI)",
+	"map.mapType.osm": "standard (OSM)",
 	"map.setZoom": "set zoom to [ZOOM]",
 	"map.changeZoom": "change zoom by [ZOOM]",
 	"map.panHorizontal": "move map [PIXELS] pixels horizontally",
@@ -750,6 +753,9 @@ var ja = {
 	"map.name": "地図",
 	"map.showMapAt": "緯度 [LAT] 経度 [LNG] の地図を表示する",
 	"map.showMapByKeyword": "[KEYWORD] の地図を表示する",
+	"map.setMapType": "地図の種類を [TYPE] にする",
+	"map.mapType.pale": "淡色",
+	"map.mapType.osm": "標準",
 	"map.setZoom": "ズームを [ZOOM] にする",
 	"map.changeZoom": "ズームを [ZOOM] ずつ変える",
 	"map.panHorizontal": "地図を横に [PIXELS] ピクセル移動する",
@@ -777,6 +783,9 @@ var translations = {
 	"map.name": "ちず",
 	"map.showMapAt": "いど [LAT] けいど [LNG] のちずをひょうじする",
 	"map.showMapByKeyword": "[KEYWORD] のちずをひょうじする",
+	"map.setMapType": "ちずのしゅるいを [TYPE] にする",
+	"map.mapType.pale": "たんしょく",
+	"map.mapType.osm": "ひょうじゅん",
 	"map.setZoom": "ズームを [ZOOM] にする",
 	"map.changeZoom": "ズームを [ZOOM] ずつかえる",
 	"map.panHorizontal": "ちずをよこに [PIXELS] ピクセルうごかす",
@@ -848,13 +857,24 @@ var STAGE_HEIGHT = 360;
 var TILE_SIZE = 256;
 
 /**
- * Base URL of OpenStreetMap standard raster tiles.
- * These tiles need no API key. Attribution to OpenStreetMap
- * contributors is required by the Tile Usage Policy:
- * https://operations.osmfoundation.org/policies/tiles/
- * @type {string}
+ * Raster tile sources selectable from the "map type" block. None need an
+ * API key. GSI (国土地理院) tiles cover Japan only; OSM standard covers the
+ * whole world. Each requires attribution per its usage policy.
+ * @type {object}
  */
-var OSM_TILE_BASE = 'https://tile.openstreetmap.org';
+var TILE_TYPES = {
+  pale: {
+    base: 'https://cyberjapandata.gsi.go.jp/xyz/pale',
+    maxZoom: 18,
+    attribution: '地理院タイル (国土地理院)'
+  },
+  osm: {
+    base: 'https://tile.openstreetmap.org',
+    maxZoom: 19,
+    attribution: '© OpenStreetMap contributors'
+  }
+};
+var DEFAULT_TILE_TYPE = 'pale';
 
 /**
  * Limit of the Web Mercator projection in degrees.
@@ -862,7 +882,6 @@ var OSM_TILE_BASE = 'https://tile.openstreetmap.org';
  */
 var MERCATOR_MAX_LAT = 85.05112878;
 var MIN_ZOOM = 0;
-var MAX_ZOOM = 19;
 
 /**
  * Scratch 3.0 blocks which draw maps using OpenStreetMap raster tiles.
@@ -888,6 +907,9 @@ var ExtensionBlocks = /*#__PURE__*/function () {
     this.centerLat = 35.681236;
     this.centerLng = 139.767125;
     this.zoom = 13;
+
+    // Selected raster tile source (key of TILE_TYPES).
+    this._mapType = DEFAULT_TILE_TYPE;
 
     // Points collected for "fit map to all points".
     this._points = [];
@@ -951,6 +973,21 @@ var ExtensionBlocks = /*#__PURE__*/function () {
             KEYWORD: {
               type: ArgumentType.STRING,
               defaultValue: '東京タワー'
+            }
+          }
+        }, {
+          opcode: 'setMapType',
+          blockType: BlockType.COMMAND,
+          text: formatMessage({
+            id: 'map.setMapType',
+            default: '地図の種類を [TYPE] にする',
+            description: 'set the tile type'
+          }),
+          arguments: {
+            TYPE: {
+              type: ArgumentType.STRING,
+              menu: 'mapTypeMenu',
+              defaultValue: 'pale'
             }
           }
         }, {
@@ -1116,9 +1153,36 @@ var ExtensionBlocks = /*#__PURE__*/function () {
           pinColorMenu: {
             acceptReporters: false,
             items: 'getPinColorMenu'
+          },
+          mapTypeMenu: {
+            acceptReporters: false,
+            items: 'getMapTypeMenu'
           }
         }
       };
+    }
+
+    /**
+     * @returns {Array} - items for the map type menu (label + tile key).
+     */
+  }, {
+    key: "getMapTypeMenu",
+    value: function getMapTypeMenu() {
+      return [{
+        text: formatMessage({
+          id: 'map.mapType.pale',
+          default: '淡色',
+          description: 'GSI pale map'
+        }),
+        value: 'pale'
+      }, {
+        text: formatMessage({
+          id: 'map.mapType.osm',
+          default: '標準',
+          description: 'OSM standard map'
+        }),
+        value: 'osm'
+      }];
     }
 
     /**
@@ -1233,6 +1297,24 @@ var ExtensionBlocks = /*#__PURE__*/function () {
     }
 
     /**
+     * @returns {object} - config of the currently selected tile type.
+     */
+  }, {
+    key: "_tileConfig",
+    value: function _tileConfig() {
+      return TILE_TYPES[this._mapType] || TILE_TYPES[DEFAULT_TILE_TYPE];
+    }
+
+    /**
+     * @returns {number} - max integer zoom for the current tile type.
+     */
+  }, {
+    key: "_maxZoom",
+    value: function _maxZoom() {
+      return this._tileConfig().maxZoom;
+    }
+
+    /**
      * Clamp a zoom value to the supported integer range.
      * @param {number} zoom - requested zoom.
      * @returns {number} - clamped integer zoom.
@@ -1240,7 +1322,7 @@ var ExtensionBlocks = /*#__PURE__*/function () {
   }, {
     key: "_clampZoom",
     value: function _clampZoom(zoom) {
-      return Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, Math.round(zoom)));
+      return Math.max(MIN_ZOOM, Math.min(this._maxZoom(), Math.round(zoom)));
     }
 
     // ---- Rendering ----
@@ -1295,13 +1377,13 @@ var ExtensionBlocks = /*#__PURE__*/function () {
     }
 
     /**
-     * Draw the OpenStreetMap attribution required by the Tile Usage Policy.
+     * Draw the attribution required by the current tile source's policy.
      * @param {CanvasRenderingContext2D} ctx - drawing context.
      */
   }, {
     key: "_drawAttribution",
     value: function _drawAttribution(ctx) {
-      var label = '© OpenStreetMap contributors';
+      var label = this._tileConfig().attribution;
       ctx.font = '10px sans-serif';
       var padding = 3;
       var width = ctx.measureText(label).width + padding * 2;
@@ -1399,6 +1481,7 @@ var ExtensionBlocks = /*#__PURE__*/function () {
       var _this = this;
       if (!this._ensureSkin()) return Promise.resolve();
       var token = ++this._redrawToken;
+      var tileBase = this._tileConfig().base;
       var zoom = this.zoom;
       var n = Math.pow(2, zoom);
       var centerWorldX = this._lngToWorldX(this.centerLng, zoom);
@@ -1414,7 +1497,7 @@ var ExtensionBlocks = /*#__PURE__*/function () {
         var _loop = function _loop() {
           if (ty < 0 || ty >= n) return 1; // continue
           var wrappedX = (tx % n + n) % n;
-          var url = "".concat(OSM_TILE_BASE, "/").concat(zoom, "/").concat(wrappedX, "/").concat(ty, ".png");
+          var url = "".concat(tileBase, "/").concat(zoom, "/").concat(wrappedX, "/").concat(ty, ".png");
           var dx = Math.round(tx * TILE_SIZE - left);
           var dy = Math.round(ty * TILE_SIZE - top);
           jobs.push(_this._loadTile(url).then(function (img) {
@@ -1502,6 +1585,17 @@ var ExtensionBlocks = /*#__PURE__*/function () {
       }).catch(function () {});
     }
   }, {
+    key: "setMapType",
+    value: function setMapType(args) {
+      var type = Cast.toString(args.TYPE);
+      if (TILE_TYPES[type]) {
+        this._mapType = type;
+      }
+      // Re-clamp in case the new tile type has a lower max zoom.
+      this.zoom = this._clampZoom(this.zoom);
+      return this._redraw();
+    }
+  }, {
     key: "setZoom",
     value: function setZoom(args) {
       this.zoom = this._clampZoom(Cast.toNumber(args.ZOOM));
@@ -1586,7 +1680,7 @@ var ExtensionBlocks = /*#__PURE__*/function () {
       if (this._points.length === 1) {
         this.centerLat = this._points[0].lat;
         this.centerLng = this._points[0].lng;
-        this.zoom = this._clampZoom(Math.min(MAX_ZOOM, 15));
+        this.zoom = this._clampZoom(Math.min(this._maxZoom(), 15));
         return this._redraw();
       }
       // Leave a margin so points are not drawn on the very edge.
@@ -1624,7 +1718,7 @@ var ExtensionBlocks = /*#__PURE__*/function () {
       };
       // Search from the closest zoom outward for the first that fits.
       var fitZoom = MIN_ZOOM;
-      for (var z = MAX_ZOOM; z >= MIN_ZOOM; z--) {
+      for (var z = this._maxZoom(); z >= MIN_ZOOM; z--) {
         var _b = bounds(z);
         if (_b.maxX - _b.minX <= usableWidth && _b.maxY - _b.minY <= usableHeight) {
           fitZoom = z;
@@ -1665,7 +1759,7 @@ var ExtensionBlocks = /*#__PURE__*/function () {
         };
       };
       var fitZoom = MIN_ZOOM;
-      for (var z = MAX_ZOOM; z >= MIN_ZOOM; z--) {
+      for (var z = this._maxZoom(); z >= MIN_ZOOM; z--) {
         var _b2 = boundsAt(z);
         if (_b2.maxX - _b2.minX <= usableWidth && _b2.maxY - _b2.minY <= usableHeight) {
           fitZoom = z;

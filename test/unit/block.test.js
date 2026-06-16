@@ -34,12 +34,35 @@ describe("blockClass", () => {
         expect(block.zoom).toBe(13);
     });
 
-    test("zoom is clamped to the supported range", () => {
+    test("zoom is clamped per tile type", () => {
         const block = new blockClass(runtime);
+        // default is GSI pale -> max zoom 18
         block.setZoom({ ZOOM: 99 });
-        expect(block.zoom).toBe(19);
+        expect(block.zoom).toBe(18);
         block.setZoom({ ZOOM: -5 });
         expect(block.zoom).toBe(0);
+        // OSM standard -> max zoom 19
+        block.setMapType({ TYPE: "osm" });
+        block.setZoom({ ZOOM: 99 });
+        expect(block.zoom).toBe(19);
+    });
+
+    test("default tile type is GSI pale and switches to OSM", () => {
+        const block = new blockClass(runtime);
+        expect(block._mapType).toBe("pale");
+        expect(block._tileConfig().base).toContain("gsi.go.jp");
+        block.setMapType({ TYPE: "osm" });
+        expect(block._mapType).toBe("osm");
+        expect(block._tileConfig().base).toContain("openstreetmap.org");
+        // an unknown value is ignored
+        block.setMapType({ TYPE: "bogus" });
+        expect(block._mapType).toBe("osm");
+    });
+
+    test("map type menu lists pale and standard", () => {
+        const block = new blockClass(runtime);
+        const values = block.getMapTypeMenu().map(i => i.value);
+        expect(values).toEqual(["pale", "osm"]);
     });
 
     test("panning moves the center east and north for positive pixels", () => {
