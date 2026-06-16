@@ -759,35 +759,43 @@ class ExtensionBlocks {
 
     /**
      * Redraw the whole map onto the skin from the current state.
+     * Supports a fractional render zoom by scaling tiles, so animations
+     * (e.g. the pin scroll) zoom smoothly rather than stepping integers.
+     * @param {number} [renderZoom] - fractional zoom to render at; defaults
+     *   to the integer this.zoom.
      * @returns {Promise} - resolves when the redraw is complete.
      */
-    _redraw () {
+    _redraw (renderZoom = this.zoom) {
         if (!this._ensureSkin()) return Promise.resolve();
         const token = ++this._redrawToken;
         const tileBase = this._tileConfig().base;
-        const zoom = this.zoom;
-        const n = Math.pow(2, zoom);
-        const centerWorldX = this._lngToWorldX(this.centerLng, zoom);
-        const centerWorldY = this._latToWorldY(this.centerLat, zoom);
-        const left = centerWorldX - (STAGE_WIDTH / 2);
-        const top = centerWorldY - (STAGE_HEIGHT / 2);
+        const zoom = renderZoom;
+        // Integer tile zoom for tile URLs; remaining fraction becomes a scale.
+        const tileZoom = Math.max(MIN_ZOOM, Math.min(this._maxZoom(), Math.floor(zoom)));
+        const tilePx = TILE_SIZE * Math.pow(2, zoom - tileZoom);
+        const n = Math.pow(2, tileZoom);
+        // Stage edges in render-zoom world pixels.
+        const left = this._lngToWorldX(this.centerLng, zoom) - (STAGE_WIDTH / 2);
+        const top = this._latToWorldY(this.centerLat, zoom) - (STAGE_HEIGHT / 2);
 
-        const txMin = Math.floor(left / TILE_SIZE);
-        const txMax = Math.floor((left + STAGE_WIDTH) / TILE_SIZE);
-        const tyMin = Math.floor(top / TILE_SIZE);
-        const tyMax = Math.floor((top + STAGE_HEIGHT) / TILE_SIZE);
+        const txMin = Math.floor(left / tilePx);
+        const txMax = Math.floor((left + STAGE_WIDTH) / tilePx);
+        const tyMin = Math.floor(top / tilePx);
+        const tyMax = Math.floor((top + STAGE_HEIGHT) / tilePx);
 
         const jobs = [];
         for (let tx = txMin; tx <= txMax; tx++) {
             for (let ty = tyMin; ty <= tyMax; ty++) {
                 if (ty < 0 || ty >= n) continue;
                 const wrappedX = ((tx % n) + n) % n;
-                const url = `${tileBase}/${zoom}/${wrappedX}/${ty}.png`;
-                const dx = Math.round((tx * TILE_SIZE) - left);
-                const dy = Math.round((ty * TILE_SIZE) - top);
+                const url = `${tileBase}/${tileZoom}/${wrappedX}/${ty}.png`;
+                const dx = (tx * tilePx) - left;
+                const dy = (ty * tilePx) - top;
                 jobs.push(this._loadTile(url).then(img => ({img, dx, dy})));
             }
         }
+        // Draw size is rounded up with a 1px overlap to avoid seams.
+        const drawPx = Math.ceil(tilePx) + 1;
 
         return Promise.all(jobs).then(tiles => {
             // Ignore if a newer redraw started while tiles were loading.
@@ -796,7 +804,9 @@ class ExtensionBlocks {
             ctx.fillStyle = '#e8e8e8';
             ctx.fillRect(0, 0, STAGE_WIDTH, STAGE_HEIGHT);
             for (const tile of tiles) {
-                if (tile.img) ctx.drawImage(tile.img, tile.dx, tile.dy);
+                if (tile.img) {
+                    ctx.drawImage(tile.img, Math.floor(tile.dx), Math.floor(tile.dy), drawPx, drawPx);
+                }
             }
             this._drawMarkers(ctx, zoom, left, top);
             this._drawAttribution(ctx);
@@ -1105,22 +1115,28 @@ class ExtensionBlocks {
             return;
         }
         const startZoom = this.zoom;
-        const dipZoom = Math.min(startZoom, this._fitZoomForBounds(
+        // Zoom out at least one level, or far enough to frame both pins.
+        const fitZoom = this._fitZoomForBounds(
             Math.min(from.lat, to.lat), Math.max(from.lat, to.lat),
             Math.min(from.lng, to.lng), Math.max(from.lng, to.lng)
-        ));
-        const steps = 24;
-        const delayMs = 30;
+        );
+        const dipZoom = Math.max(MIN_ZOOM, Math.min(fitZoom, startZoom - 1));
+        const steps = 30;
+        const delayMs = 24;
         const frame = t => {
             this.centerLat = from.lat + ((to.lat - from.lat) * t);
             this.centerLng = from.lng + ((to.lng - from.lng) * t);
             // 4t(1-t) is a parabola: 0 at the ends, 1 at the midpoint.
             const arc = 4 * t * (1 - t);
-            this.zoom = this._clampZoom(startZoom - ((startZoom - dipZoom) * arc));
-            return Promise.resolve(this._redraw());
+            // Render at a fractional zoom for a smooth zoom-out and back.
+            const renderZoom = startZoom - ((startZoom - dipZoom) * arc);
+            return Promise.resolve(this._redraw(renderZoom));
         };
         const animate = i => frame(i / steps).then(() => {
-            if (i >= steps) return;
+            if (i >= steps) {
+                this.zoom = startZoom;
+                return;
+            }
             return new Promise(resolve => setTimeout(resolve, delayMs))
                 .then(() => animate(i + 1));
         });
