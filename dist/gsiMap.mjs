@@ -45,7 +45,7 @@ var entry = {
     });
   },
   extensionId: 'gsiMap',
-  extensionURL: 'https://asondemita.github.io/xcx-geo/dist/gsiMap.mjs',
+  extensionURL: 'https://asondemita.github.io/xcx-map/dist/gsiMap.mjs',
   collaborator: 'asondemita',
   iconURL: img$2,
   insetIconURL: img$1,
@@ -61,7 +61,7 @@ var entry = {
   disabled: false,
   bluetoothRequired: false,
   internetConnectionRequired: true,
-  helpLink: 'https://asondemita.github.io/xcx-geo/',
+  helpLink: 'https://asondemita.github.io/xcx-map/',
   setFormatMessage: function setFormatMessage(formatter) {
     formatMessage$1 = formatter;
   },
@@ -823,7 +823,7 @@ var EXTENSION_ID = 'gsiMap';
  * When it was loaded as a module, 'extensionURL' will be replaced a URL which is retrieved from.
  * @type {string}
  */
-var extensionURL = 'https://asondemita.github.io/xcx-geo/dist/gsiMap.mjs';
+var extensionURL = 'https://asondemita.github.io/xcx-map/dist/gsiMap.mjs';
 
 /**
  * Scratch stage size in stage units (native renderer resolution).

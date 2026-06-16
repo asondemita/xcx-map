@@ -26,7 +26,7 @@ const entry = {
         });
     },
     extensionId: 'gsiMap',
-    extensionURL: 'https://asondemita.github.io/xcx-geo/dist/gsiMap.mjs',
+    extensionURL: 'https://asondemita.github.io/xcx-map/dist/gsiMap.mjs',
     collaborator: 'asondemita',
     iconURL: iconURL,
     insetIconURL: insetIconURL,
@@ -42,7 +42,7 @@ const entry = {
     disabled: false,
     bluetoothRequired: false,
     internetConnectionRequired: true,
-    helpLink: 'https://asondemita.github.io/xcx-geo/',
+    helpLink: 'https://asondemita.github.io/xcx-map/',
     setFormatMessage: formatter => {
         formatMessage = formatter;
     },

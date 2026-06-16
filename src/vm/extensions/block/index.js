@@ -33,7 +33,7 @@ const EXTENSION_ID = 'gsiMap';
  * When it was loaded as a module, 'extensionURL' will be replaced a URL which is retrieved from.
  * @type {string}
  */
-let extensionURL = 'https://asondemita.github.io/xcx-geo/dist/gsiMap.mjs';
+let extensionURL = 'https://asondemita.github.io/xcx-map/dist/gsiMap.mjs';
 
 /**
  * Scratch stage size in stage units (native renderer resolution).
