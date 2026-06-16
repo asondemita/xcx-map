@@ -285,14 +285,25 @@ describe("blockClass", () => {
         expect(block._points[2].name).toBeUndefined();
     });
 
-    test("plotData rebuilds rows when line breaks were stripped (flat TSV)", () => {
+    test("plotData handles tab columns with spaces between rows (newlines lost)", () => {
         const block = new blockClass(runtime);
         block.clearPoints();
-        // tabs survive, newlines gone -> one flat stream, 4 columns
-        block.plotData({ DATA: "35.68\t139.76\t東京\t赤\t34.70\t135.50\t大阪\t青" });
+        // newlines turned into spaces on paste; tabs still delimit columns
+        block.plotData({ DATA: "35.68\t139.76\t東京\t赤 34.70\t135.50\t大阪\t青" });
         expect(block._points).toHaveLength(2);
         expect(block._points[0]).toMatchObject({ lat: 35.68, lng: 139.76, name: "東京", color: "#e53935" });
         expect(block._points[1]).toMatchObject({ lat: 34.7, lng: 135.5, name: "大阪", color: "#1e88e5" });
+    });
+
+    test("plotData handles the reported sheet paste (tabs + numeric 3rd col, no newlines)", () => {
+        const block = new blockClass(runtime);
+        block.clearPoints();
+        block.plotData({
+            DATA: "36.63057\t140.01274\t4 36.07554\t139.49681\t4 35.48659\t139.41362\t3"
+        });
+        expect(block._points).toHaveLength(3);
+        expect(block._points[0]).toMatchObject({ lat: 36.63057, lng: 140.01274, name: "4" });
+        expect(block._points[2]).toMatchObject({ lat: 35.48659, lng: 139.41362, name: "3" });
     });
 
     test("plotData accepts space-separated rows (sheet tabs turned to spaces)", () => {

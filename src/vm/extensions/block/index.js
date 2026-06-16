@@ -250,7 +250,7 @@ class ExtensionBlocks {
                     blockType: BlockType.COMMAND,
                     text: formatMessage({
                         id: 'map.plotData',
-                        default: 'データ [DATA] をプロットする',
+                        default: 'データ [DATA] のピンを立てる',
                         description: 'plot pasted CSV/TSV rows (lat, lng, name, color)'
                     }),
                     arguments: {
@@ -1022,55 +1022,47 @@ class ExtensionBlocks {
     }
 
     /**
-     * Parse pasted CSV/TSV (lat, lng, name?, color?) into records. Rows split
-     * on newline or ';'; fields on tab/comma, or on spaces when neither is
-     * present (spreadsheet tabs are sometimes turned into spaces on paste).
-     * If line breaks were stripped on paste (one flat token stream), records
-     * are rebuilt from the lat/lng number pairs (columns repeat at a period).
+     * Parse pasted spreadsheet data (lat, lng, name?, color?) into records.
+     * Handles the common paste outcomes: real newlines kept, or newlines
+     * turned into spaces while tab/comma columns survive. Rule: if there are
+     * newlines, rows split on newline/';'. Otherwise, when tab/comma columns
+     * are present, the former newlines are spaces, so rows split on spaces and
+     * columns on tab/comma. With no separators at all, the whole text is one
+     * space-separated row. Rows whose first two fields aren't numbers (e.g. a
+     * header) are skipped.
      * @param {string} raw - pasted text.
      * @returns {Array} - [{lat, lng, name, color}].
      */
     _plotParse (raw) {
-        const text = Cast.toString(raw).replace(/\r\n?/g, '\n');
+        const text = Cast.toString(raw)
+            .replace(/\r\n?/g, '\n')
+            .trim();
         const isNum = s => s !== '' && isFinite(Number(s));
-        // Split a line into fields: prefer tab/comma; fall back to whitespace.
-        const splitFields = s => ((/[\t,]/).test(s) ? s.split(/[\t,]/) : s.trim().split(/\s+/));
-        const make = f => ({
-            lat: Number(f[0]),
-            lng: Number(f[1]),
-            name: (f[2] || '').trim(),
-            color: (f[3] || '').trim()
-        });
-        if ((/[\n;]/).test(text)) {
-            const recs = [];
-            for (const row of text.split(/[\n;]+/)) {
-                const f = splitFields(row).map(s => s.trim());
-                if (f.length >= 2 && isNum(f[0]) && isNum(f[1])) {
-                    recs.push(make(f));
-                }
-            }
-            return recs;
-        }
-        // Flat stream (line breaks lost on paste): rebuild rows by column period.
-        const tok = splitFields(text).map(s => s.trim());
-        let start = 0;
-        while (start + 1 < tok.length && !(isNum(tok[start]) && isNum(tok[start + 1]))) {
-            start++;
-        }
-        let cols = tok.length - start;
-        for (let i = start + 2; i + 1 < tok.length; i++) {
-            if (isNum(tok[i]) && isNum(tok[i + 1])) {
-                cols = i - start;
-                break;
-            }
-        }
-        if (cols < 2) {
-            cols = 2;
+        const hasRowBreak = (/[\n;]/).test(text);
+        const hasFieldSep = (/[\t,]/).test(text);
+        let rowSep;
+        let colSep;
+        if (hasRowBreak) {
+            rowSep = /[\n;]+/;
+            colSep = hasFieldSep ? /[\t,]/ : /\s+/;
+        } else if (hasFieldSep) {
+            // Newlines became spaces; tabs/commas still delimit the columns.
+            rowSep = / +/;
+            colSep = /[\t,]/;
+        } else {
+            rowSep = /\n/; // no break available: treat as a single row
+            colSep = /\s+/;
         }
         const recs = [];
-        for (let i = start; i + 1 < tok.length; i += cols) {
-            if (isNum(tok[i]) && isNum(tok[i + 1])) {
-                recs.push(make(tok.slice(i, i + cols)));
+        for (const row of text.split(rowSep)) {
+            const f = row.split(colSep).map(s => s.trim());
+            if (f.length >= 2 && isNum(f[0]) && isNum(f[1])) {
+                recs.push({
+                    lat: Number(f[0]),
+                    lng: Number(f[1]),
+                    name: (f[2] || '').trim(),
+                    color: (f[3] || '').trim()
+                });
             }
         }
         return recs;
