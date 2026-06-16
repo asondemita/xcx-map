@@ -232,8 +232,8 @@ class ExtensionBlocks {
                     blockType: BlockType.COMMAND,
                     text: formatMessage({
                         id: 'map.addPoint',
-                        default: '地点 緯度 [LAT] 経度 [LNG] を追加する',
-                        description: 'add a point to fit'
+                        default: '地点 緯度 [LAT] 経度 [LNG] にピンを立てる',
+                        description: 'drop a pin at a point'
                     }),
                     arguments: {
                         LAT: {type: ArgumentType.NUMBER, defaultValue: 35.681236},
@@ -492,6 +492,68 @@ class ExtensionBlocks {
     }
 
     /**
+     * Draw a teardrop pin whose tip points at the given stage position.
+     * @param {CanvasRenderingContext2D} ctx - drawing context.
+     * @param {number} x - stage x of the pin tip.
+     * @param {number} y - stage y of the pin tip.
+     */
+    _drawPin (ctx, x, y) {
+        const headR = 6;
+        const headCy = y - 15;
+        // Left/right where the tail meets the head.
+        const tailX = headR * 0.8;
+        const tailY = headCy + (headR * 0.55);
+        ctx.save();
+        ctx.lineJoin = 'round';
+        ctx.lineWidth = 1.5;
+        ctx.strokeStyle = 'rgba(0, 0, 0, 0.45)';
+        ctx.fillStyle = '#e53935';
+        // Tail (filled, no top chord so it blends into the head).
+        ctx.beginPath();
+        ctx.moveTo(x, y);
+        ctx.lineTo(x - tailX, tailY);
+        ctx.lineTo(x + tailX, tailY);
+        ctx.closePath();
+        ctx.fill();
+        // Head.
+        ctx.beginPath();
+        ctx.arc(x, headCy, headR, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+        // Outline only the two visible tail edges (tip up to the head).
+        ctx.beginPath();
+        ctx.moveTo(x - tailX, tailY);
+        ctx.lineTo(x, y);
+        ctx.lineTo(x + tailX, tailY);
+        ctx.stroke();
+        // White center dot.
+        ctx.beginPath();
+        ctx.arc(x, headCy, headR * 0.4, 0, Math.PI * 2);
+        ctx.fillStyle = '#ffffff';
+        ctx.fill();
+        ctx.restore();
+    }
+
+    /**
+     * Draw a pin for every collected point that falls near the stage.
+     * @param {CanvasRenderingContext2D} ctx - drawing context.
+     * @param {number} zoom - current integer zoom.
+     * @param {number} left - world x of the stage's left edge.
+     * @param {number} top - world y of the stage's top edge.
+     */
+    _drawMarkers (ctx, zoom, left, top) {
+        for (const p of this._points) {
+            const px = Math.round(this._lngToWorldX(p.lng, zoom) - left);
+            const py = Math.round(this._latToWorldY(p.lat, zoom) - top);
+            // Skip pins whose tip is well outside the stage.
+            if (px < -20 || px > STAGE_WIDTH + 20 || py < -20 || py > STAGE_HEIGHT + 20) {
+                continue;
+            }
+            this._drawPin(ctx, px, py);
+        }
+    }
+
+    /**
      * Redraw the whole map onto the skin from the current state.
      * @returns {Promise} - resolves when the redraw is complete.
      */
@@ -534,6 +596,7 @@ class ExtensionBlocks {
             for (const tile of tiles) {
                 if (tile.img) ctx.drawImage(tile.img, tile.dx, tile.dy);
             }
+            this._drawMarkers(ctx, zoom, left, top);
             this._drawAttribution(ctx);
             this.runtime.renderer.updateBitmapSkin(this._skinId, this._canvas, 1);
             this.runtime.requestRedraw();
@@ -569,6 +632,7 @@ class ExtensionBlocks {
 
     clearPoints () {
         this._points = [];
+        return this._redraw();
     }
 
     addPoint (args) {
@@ -576,6 +640,7 @@ class ExtensionBlocks {
             lat: Cast.toNumber(args.LAT),
             lng: Cast.toNumber(args.LNG)
         });
+        return this._redraw();
     }
 
     /**

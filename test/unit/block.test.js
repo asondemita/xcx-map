@@ -64,6 +64,35 @@ describe("blockClass", () => {
         }
     });
 
+    test("draws one pin per on-stage point", () => {
+        const block = new blockClass(runtime);
+        // Stub the renderer state so _redraw's drawing path runs.
+        const calls = { arc: 0 };
+        const ctx = new Proxy({}, {
+            get: (_t, prop) => {
+                if (prop === "arc") return () => { calls.arc++; };
+                if (prop === "measureText") return () => ({ width: 100 });
+                return () => {};
+            }
+        });
+        block._ctx = ctx;
+        // Tokyo center at zoom 13: Tokyo is on-stage, Osaka is far off-stage.
+        block.centerLat = 35.681236;
+        block.centerLng = 139.767125;
+        block.zoom = 13;
+        const n = Math.pow(2, block.zoom);
+        const left = block._lngToWorldX(block.centerLng, block.zoom) - 240;
+        const top = block._latToWorldY(block.centerLat, block.zoom) - 180;
+        block._points = [
+            { lat: 35.681236, lng: 139.767125 }, // Tokyo (on stage)
+            { lat: 34.702485, lng: 135.495951 }  // Osaka (off stage)
+        ];
+        expect(n).toBeGreaterThan(0);
+        block._drawMarkers(ctx, block.zoom, left, top);
+        // Each pin uses 2 arcs (head + center dot); only Tokyo is on-stage.
+        expect(calls.arc).toBe(2);
+    });
+
     test("fit to a single point centers on it", () => {
         const block = new blockClass(runtime);
         block.clearPoints();
