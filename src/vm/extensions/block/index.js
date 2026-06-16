@@ -308,7 +308,7 @@ class ExtensionBlocks {
                         description: "set the most recent pin's name"
                     }),
                     arguments: {
-                        NAME: {type: ArgumentType.STRING, defaultValue: ''}
+                        NAME: {type: ArgumentType.STRING, defaultValue: 'ココ'}
                     }
                 },
                 {
@@ -321,7 +321,7 @@ class ExtensionBlocks {
                     }),
                     arguments: {
                         NUMBER: {type: ArgumentType.NUMBER, defaultValue: 1},
-                        NAME: {type: ArgumentType.STRING, defaultValue: ''}
+                        NAME: {type: ArgumentType.STRING, defaultValue: 'ココ'}
                     }
                 },
                 {
@@ -390,7 +390,7 @@ class ExtensionBlocks {
                     blockType: BlockType.REPORTER,
                     text: formatMessage({
                         id: 'map.mapLat',
-                        default: '緯度',
+                        default: '中心の緯度',
                         description: 'latitude of the map center'
                     })
                 },
@@ -399,7 +399,7 @@ class ExtensionBlocks {
                     blockType: BlockType.REPORTER,
                     text: formatMessage({
                         id: 'map.mapLng',
-                        default: '経度',
+                        default: '中心の経度',
                         description: 'longitude of the map center'
                     })
                 },
@@ -991,6 +991,28 @@ class ExtensionBlocks {
     }
 
     /**
+     * Largest integer zoom at which a lat/lng box fits the stage (with margin).
+     * @param {number} south - southern latitude.
+     * @param {number} north - northern latitude.
+     * @param {number} west - western longitude.
+     * @param {number} east - eastern longitude.
+     * @returns {number} - fitting integer zoom.
+     */
+    _fitZoomForBounds (south, north, west, east) {
+        const PADDING = 24;
+        const usableWidth = STAGE_WIDTH - (PADDING * 2);
+        const usableHeight = STAGE_HEIGHT - (PADDING * 2);
+        for (let z = this._maxZoom(); z >= MIN_ZOOM; z--) {
+            const w = Math.abs(this._lngToWorldX(east, z) - this._lngToWorldX(west, z));
+            const h = Math.abs(this._latToWorldY(south, z) - this._latToWorldY(north, z));
+            if (w <= usableWidth && h <= usableHeight) {
+                return z;
+            }
+        }
+        return MIN_ZOOM;
+    }
+
+    /**
      * Center and zoom the map to fit a lat/lng bounding box.
      * @param {number} south - southern latitude.
      * @param {number} north - northern latitude.
@@ -998,32 +1020,11 @@ class ExtensionBlocks {
      * @param {number} east - eastern longitude.
      */
     _fitToBounds (south, north, west, east) {
-        const PADDING = 24;
-        const usableWidth = STAGE_WIDTH - (PADDING * 2);
-        const usableHeight = STAGE_HEIGHT - (PADDING * 2);
-        const boundsAt = zoom => {
-            const x1 = this._lngToWorldX(west, zoom);
-            const x2 = this._lngToWorldX(east, zoom);
-            const y1 = this._latToWorldY(north, zoom);
-            const y2 = this._latToWorldY(south, zoom);
-            return {
-                minX: Math.min(x1, x2),
-                maxX: Math.max(x1, x2),
-                minY: Math.min(y1, y2),
-                maxY: Math.max(y1, y2)
-            };
-        };
-        let fitZoom = MIN_ZOOM;
-        for (let z = this._maxZoom(); z >= MIN_ZOOM; z--) {
-            const b = boundsAt(z);
-            if ((b.maxX - b.minX) <= usableWidth && (b.maxY - b.minY) <= usableHeight) {
-                fitZoom = z;
-                break;
-            }
-        }
-        const b = boundsAt(fitZoom);
-        this.centerLng = this._worldXToLng((b.minX + b.maxX) / 2, fitZoom);
-        this.centerLat = this._worldYToLat((b.minY + b.maxY) / 2, fitZoom);
+        const fitZoom = this._fitZoomForBounds(south, north, west, east);
+        const cx = (this._lngToWorldX(west, fitZoom) + this._lngToWorldX(east, fitZoom)) / 2;
+        const cy = (this._latToWorldY(north, fitZoom) + this._latToWorldY(south, fitZoom)) / 2;
+        this.centerLng = this._worldXToLng(cx, fitZoom);
+        this.centerLat = this._worldYToLat(cy, fitZoom);
         this.zoom = fitZoom;
     }
 
@@ -1091,7 +1092,9 @@ class ExtensionBlocks {
     }
 
     /**
-     * Smoothly scroll the map center from one pin to another (keeps zoom).
+     * Scroll the map center from one pin to another along an arc: the zoom
+     * dips out at the midpoint (just enough to frame both pins) and returns
+     * to the start zoom, like a camera arcing up and back down.
      * @param {object} args - block arguments with 1-based FROM/TO pin numbers.
      * @returns {Promise|undefined} - resolves when the scroll finishes.
      */
@@ -1101,14 +1104,22 @@ class ExtensionBlocks {
         if (!from || !to) {
             return;
         }
+        const startZoom = this.zoom;
+        const dipZoom = Math.min(startZoom, this._fitZoomForBounds(
+            Math.min(from.lat, to.lat), Math.max(from.lat, to.lat),
+            Math.min(from.lng, to.lng), Math.max(from.lng, to.lng)
+        ));
         const steps = 24;
         const delayMs = 30;
-        const moveTo = t => {
+        const frame = t => {
             this.centerLat = from.lat + ((to.lat - from.lat) * t);
             this.centerLng = from.lng + ((to.lng - from.lng) * t);
+            // 4t(1-t) is a parabola: 0 at the ends, 1 at the midpoint.
+            const arc = 4 * t * (1 - t);
+            this.zoom = this._clampZoom(startZoom - ((startZoom - dipZoom) * arc));
             return Promise.resolve(this._redraw());
         };
-        const animate = i => moveTo(i / steps).then(() => {
+        const animate = i => frame(i / steps).then(() => {
             if (i >= steps) return;
             return new Promise(resolve => setTimeout(resolve, delayMs))
                 .then(() => animate(i + 1));

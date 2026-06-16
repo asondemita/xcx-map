@@ -178,10 +178,21 @@ describe("blockClass", () => {
             { lat: 30, lng: 40 }
         ];
         expect(block.scrollBetweenPins({ FROM: 1, TO: 9 })).toBeUndefined();
+        const startZoom = block.zoom;
         return block.scrollBetweenPins({ FROM: 1, TO: 2 }).then(() => {
             expect(block.centerLat).toBeCloseTo(30, 6);
             expect(block.centerLng).toBeCloseTo(40, 6);
+            // the arc returns to the starting zoom at the end
+            expect(block.zoom).toBe(startZoom);
         });
+    });
+
+    test("_fitZoomForBounds is low for a wide box, high for a tiny box", () => {
+        const block = new blockClass(runtime);
+        const wide = block._fitZoomForBounds(10, 30, 20, 40);
+        const tiny = block._fitZoomForBounds(35.0, 35.001, 139.0, 139.001);
+        expect(wide).toBeLessThan(tiny);
+        expect(wide).toBeGreaterThanOrEqual(0);
     });
 
     test("_fitToBounds centers within the given lat/lng box", () => {
