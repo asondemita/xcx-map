@@ -124,6 +124,39 @@ describe("blockClass", () => {
         expect(block.zoom).toBeLessThanOrEqual(19);
     });
 
+    test("pins draw their order number only when numbering is on", () => {
+        const block = new blockClass(runtime);
+        const texts = [];
+        const ctx = new Proxy({}, {
+            get: (_t, prop) => {
+                if (prop === "fillText" || prop === "strokeText") {
+                    return t => texts.push(t);
+                }
+                return () => {};
+            }
+        });
+        block.centerLat = 35.681236;
+        block.centerLng = 139.767125;
+        block.zoom = 13;
+        const left = block._lngToWorldX(block.centerLng, block.zoom) - 240;
+        const top = block._latToWorldY(block.centerLat, block.zoom) - 180;
+        block._points = [{ lat: 35.681236, lng: 139.767125, color: "#e53935" }];
+        // default off -> no number text
+        block._drawMarkers(ctx, block.zoom, left, top);
+        expect(texts).not.toContain("1");
+        // turn on -> "1" is drawn
+        block.setPinNumber({ MODE: "on" });
+        block._drawMarkers(ctx, block.zoom, left, top);
+        expect(texts).toContain("1");
+    });
+
+    test("pin number menu lists off then on, default off", () => {
+        const block = new blockClass(runtime);
+        const values = block.getPinNumberMenu().map(i => i.value);
+        expect(values).toEqual(["off", "on"]);
+        expect(block._pinNumbered).toBe(false);
+    });
+
     test("showMapByKeyword does not throw for empty keyword", () => {
         const block = new blockClass(runtime);
         expect(() => block.showMapByKeyword({ KEYWORD: "" })).not.toThrow();

@@ -738,6 +738,9 @@ var en = {
 	"map.addCenterPin": "drop a [COLOR] pin at the map center",
 	"map.clearPoints": "clear all pins",
 	"map.fitToPoints": "fit map so all pins are visible",
+	"map.setPinNumber": "turn pin numbers [MODE]",
+	"map.pinNumber.off": "off",
+	"map.pinNumber.on": "on",
 	"map.mapLat": "latitude",
 	"map.mapLng": "longitude",
 	"map.showCurrentLocation": "show map of current location",
@@ -767,6 +770,9 @@ var ja = {
 	"map.addCenterPin": "地図の中心に [COLOR] のピンを立てる",
 	"map.clearPoints": "ピンを全て消す",
 	"map.fitToPoints": "全てのピンが見えるように地図を調整する",
+	"map.setPinNumber": "ピンを番号 [MODE] にする",
+	"map.pinNumber.off": "無し",
+	"map.pinNumber.on": "有り",
 	"map.mapLat": "緯度",
 	"map.mapLng": "経度",
 	"map.showCurrentLocation": "現在位置の地図を表示する",
@@ -799,6 +805,9 @@ var translations = {
 	"map.addCenterPin": "ちずのちゅうしんに [COLOR] のピンをたてる",
 	"map.clearPoints": "ピンをすべてけす",
 	"map.fitToPoints": "すべてのピンがみえるようにちずをちょうせいする",
+	"map.setPinNumber": "ピンをばんごう [MODE] にする",
+	"map.pinNumber.off": "なし",
+	"map.pinNumber.on": "あり",
 	"map.mapLat": "いど",
 	"map.mapLng": "けいど",
 	"map.showCurrentLocation": "げんざいちのちずをひょうじする",
@@ -919,6 +928,9 @@ var ExtensionBlocks = /*#__PURE__*/function () {
 
     // Points collected for "fit map to all points".
     this._points = [];
+
+    // Whether pins show their order number (1, 2, 3, ...).
+    this._pinNumbered = false;
 
     // Map layer transparency (ghost effect: 0 = opaque, 100 = invisible).
     this._opacity = 0;
@@ -1120,6 +1132,21 @@ var ExtensionBlocks = /*#__PURE__*/function () {
             default: '全てのピンが見えるように地図を調整する',
             description: 'move and zoom the map so all pins are visible'
           })
+        }, {
+          opcode: 'setPinNumber',
+          blockType: BlockType.COMMAND,
+          text: formatMessage({
+            id: 'map.setPinNumber',
+            default: 'ピンを番号 [MODE] にする',
+            description: 'turn pin order numbers on or off'
+          }),
+          arguments: {
+            MODE: {
+              type: ArgumentType.STRING,
+              menu: 'pinNumberMenu',
+              defaultValue: 'off'
+            }
+          }
         }, '---', {
           opcode: 'mapLat',
           blockType: BlockType.REPORTER,
@@ -1179,9 +1206,36 @@ var ExtensionBlocks = /*#__PURE__*/function () {
           mapTypeMenu: {
             acceptReporters: false,
             items: 'getMapTypeMenu'
+          },
+          pinNumberMenu: {
+            acceptReporters: false,
+            items: 'getPinNumberMenu'
           }
         }
       };
+    }
+
+    /**
+     * @returns {Array} - items for the pin number on/off menu.
+     */
+  }, {
+    key: "getPinNumberMenu",
+    value: function getPinNumberMenu() {
+      return [{
+        text: formatMessage({
+          id: 'map.pinNumber.off',
+          default: '無し',
+          description: 'no pin numbers'
+        }),
+        value: 'off'
+      }, {
+        text: formatMessage({
+          id: 'map.pinNumber.on',
+          default: '有り',
+          description: 'show pin numbers'
+        }),
+        value: 'on'
+      }];
     }
 
     /**
@@ -1423,10 +1477,11 @@ var ExtensionBlocks = /*#__PURE__*/function () {
      * @param {number} x - stage x of the pin tip.
      * @param {number} y - stage y of the pin tip.
      * @param {string} color - fill color of the pin head.
+     * @param {?string} label - order number to draw on the head, or null.
      */
   }, {
     key: "_drawPin",
-    value: function _drawPin(ctx, x, y, color) {
+    value: function _drawPin(ctx, x, y, color, label) {
       var headR = 6;
       var headCy = y - 15;
       // Left/right where the tail meets the head.
@@ -1455,11 +1510,23 @@ var ExtensionBlocks = /*#__PURE__*/function () {
       ctx.lineTo(x, y);
       ctx.lineTo(x + tailX, tailY);
       ctx.stroke();
-      // White center dot.
-      ctx.beginPath();
-      ctx.arc(x, headCy, headR * 0.4, 0, Math.PI * 2);
-      ctx.fillStyle = '#ffffff';
-      ctx.fill();
+      if (label) {
+        // Order number, white with a dark outline so it reads on any color.
+        ctx.font = "bold ".concat(label.length > 1 ? 8 : 10, "px sans-serif");
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.lineWidth = 2.5;
+        ctx.strokeStyle = 'rgba(0, 0, 0, 0.6)';
+        ctx.fillStyle = '#ffffff';
+        ctx.strokeText(label, x, headCy);
+        ctx.fillText(label, x, headCy);
+      } else {
+        // White center dot.
+        ctx.beginPath();
+        ctx.arc(x, headCy, headR * 0.4, 0, Math.PI * 2);
+        ctx.fillStyle = '#ffffff';
+        ctx.fill();
+      }
       ctx.restore();
     }
 
@@ -1473,23 +1540,16 @@ var ExtensionBlocks = /*#__PURE__*/function () {
   }, {
     key: "_drawMarkers",
     value: function _drawMarkers(ctx, zoom, left, top) {
-      var _iterator = _createForOfIteratorHelper(this._points),
-        _step;
-      try {
-        for (_iterator.s(); !(_step = _iterator.n()).done;) {
-          var p = _step.value;
-          var px = Math.round(this._lngToWorldX(p.lng, zoom) - left);
-          var py = Math.round(this._latToWorldY(p.lat, zoom) - top);
-          // Skip pins whose tip is well outside the stage.
-          if (px < -20 || px > STAGE_WIDTH + 20 || py < -20 || py > STAGE_HEIGHT + 20) {
-            continue;
-          }
-          this._drawPin(ctx, px, py, p.color);
+      for (var i = 0; i < this._points.length; i++) {
+        var p = this._points[i];
+        var px = Math.round(this._lngToWorldX(p.lng, zoom) - left);
+        var py = Math.round(this._latToWorldY(p.lat, zoom) - top);
+        // Skip pins whose tip is well outside the stage.
+        if (px < -20 || px > STAGE_WIDTH + 20 || py < -20 || py > STAGE_HEIGHT + 20) {
+          continue;
         }
-      } catch (err) {
-        _iterator.e(err);
-      } finally {
-        _iterator.f();
+        var label = this._pinNumbered ? String(i + 1) : null;
+        this._drawPin(ctx, px, py, p.color, label);
       }
     }
 
@@ -1540,17 +1600,17 @@ var ExtensionBlocks = /*#__PURE__*/function () {
         var ctx = _this._ctx;
         ctx.fillStyle = '#e8e8e8';
         ctx.fillRect(0, 0, STAGE_WIDTH, STAGE_HEIGHT);
-        var _iterator2 = _createForOfIteratorHelper(tiles),
-          _step2;
+        var _iterator = _createForOfIteratorHelper(tiles),
+          _step;
         try {
-          for (_iterator2.s(); !(_step2 = _iterator2.n()).done;) {
-            var tile = _step2.value;
+          for (_iterator.s(); !(_step = _iterator.n()).done;) {
+            var tile = _step.value;
             if (tile.img) ctx.drawImage(tile.img, tile.dx, tile.dy);
           }
         } catch (err) {
-          _iterator2.e(err);
+          _iterator.e(err);
         } finally {
-          _iterator2.f();
+          _iterator.f();
         }
         _this._drawMarkers(ctx, zoom, left, top);
         _this._drawAttribution(ctx);
@@ -1678,6 +1738,12 @@ var ExtensionBlocks = /*#__PURE__*/function () {
       return this._redraw();
     }
   }, {
+    key: "setPinNumber",
+    value: function setPinNumber(args) {
+      this._pinNumbered = Cast.toString(args.MODE) === 'on';
+      return this._redraw();
+    }
+  }, {
     key: "addPoint",
     value: function addPoint(args) {
       this._points.push({
@@ -1724,11 +1790,11 @@ var ExtensionBlocks = /*#__PURE__*/function () {
         var maxX = -Infinity;
         var minY = Infinity;
         var maxY = -Infinity;
-        var _iterator3 = _createForOfIteratorHelper(_this3._points),
-          _step3;
+        var _iterator2 = _createForOfIteratorHelper(_this3._points),
+          _step2;
         try {
-          for (_iterator3.s(); !(_step3 = _iterator3.n()).done;) {
-            var p = _step3.value;
+          for (_iterator2.s(); !(_step2 = _iterator2.n()).done;) {
+            var p = _step2.value;
             var wx = _this3._lngToWorldX(p.lng, zoom);
             var wy = _this3._latToWorldY(p.lat, zoom);
             if (wx < minX) minX = wx;
@@ -1737,9 +1803,9 @@ var ExtensionBlocks = /*#__PURE__*/function () {
             if (wy > maxY) maxY = wy;
           }
         } catch (err) {
-          _iterator3.e(err);
+          _iterator2.e(err);
         } finally {
-          _iterator3.f();
+          _iterator2.f();
         }
         return {
           minX: minX,

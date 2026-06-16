@@ -151,6 +151,9 @@ class ExtensionBlocks {
         // Points collected for "fit map to all points".
         this._points = [];
 
+        // Whether pins show their order number (1, 2, 3, ...).
+        this._pinNumbered = false;
+
         // Map layer transparency (ghost effect: 0 = opaque, 100 = invisible).
         this._opacity = 0;
 
@@ -332,6 +335,22 @@ class ExtensionBlocks {
                         description: 'move and zoom the map so all pins are visible'
                     })
                 },
+                {
+                    opcode: 'setPinNumber',
+                    blockType: BlockType.COMMAND,
+                    text: formatMessage({
+                        id: 'map.setPinNumber',
+                        default: 'ピンを番号 [MODE] にする',
+                        description: 'turn pin order numbers on or off'
+                    }),
+                    arguments: {
+                        MODE: {
+                            type: ArgumentType.STRING,
+                            menu: 'pinNumberMenu',
+                            defaultValue: 'off'
+                        }
+                    }
+                },
                 '---',
                 {
                     opcode: 'mapLat',
@@ -384,9 +403,29 @@ class ExtensionBlocks {
                 mapTypeMenu: {
                     acceptReporters: false,
                     items: 'getMapTypeMenu'
+                },
+                pinNumberMenu: {
+                    acceptReporters: false,
+                    items: 'getPinNumberMenu'
                 }
             }
         };
+    }
+
+    /**
+     * @returns {Array} - items for the pin number on/off menu.
+     */
+    getPinNumberMenu () {
+        return [
+            {
+                text: formatMessage({id: 'map.pinNumber.off', default: '無し', description: 'no pin numbers'}),
+                value: 'off'
+            },
+            {
+                text: formatMessage({id: 'map.pinNumber.on', default: '有り', description: 'show pin numbers'}),
+                value: 'on'
+            }
+        ];
     }
 
     /**
@@ -564,8 +603,9 @@ class ExtensionBlocks {
      * @param {number} x - stage x of the pin tip.
      * @param {number} y - stage y of the pin tip.
      * @param {string} color - fill color of the pin head.
+     * @param {?string} label - order number to draw on the head, or null.
      */
-    _drawPin (ctx, x, y, color) {
+    _drawPin (ctx, x, y, color, label) {
         const headR = 6;
         const headCy = y - 15;
         // Left/right where the tail meets the head.
@@ -594,11 +634,23 @@ class ExtensionBlocks {
         ctx.lineTo(x, y);
         ctx.lineTo(x + tailX, tailY);
         ctx.stroke();
-        // White center dot.
-        ctx.beginPath();
-        ctx.arc(x, headCy, headR * 0.4, 0, Math.PI * 2);
-        ctx.fillStyle = '#ffffff';
-        ctx.fill();
+        if (label) {
+            // Order number, white with a dark outline so it reads on any color.
+            ctx.font = `bold ${label.length > 1 ? 8 : 10}px sans-serif`;
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.lineWidth = 2.5;
+            ctx.strokeStyle = 'rgba(0, 0, 0, 0.6)';
+            ctx.fillStyle = '#ffffff';
+            ctx.strokeText(label, x, headCy);
+            ctx.fillText(label, x, headCy);
+        } else {
+            // White center dot.
+            ctx.beginPath();
+            ctx.arc(x, headCy, headR * 0.4, 0, Math.PI * 2);
+            ctx.fillStyle = '#ffffff';
+            ctx.fill();
+        }
         ctx.restore();
     }
 
@@ -610,14 +662,16 @@ class ExtensionBlocks {
      * @param {number} top - world y of the stage's top edge.
      */
     _drawMarkers (ctx, zoom, left, top) {
-        for (const p of this._points) {
+        for (let i = 0; i < this._points.length; i++) {
+            const p = this._points[i];
             const px = Math.round(this._lngToWorldX(p.lng, zoom) - left);
             const py = Math.round(this._latToWorldY(p.lat, zoom) - top);
             // Skip pins whose tip is well outside the stage.
             if (px < -20 || px > STAGE_WIDTH + 20 || py < -20 || py > STAGE_HEIGHT + 20) {
                 continue;
             }
-            this._drawPin(ctx, px, py, p.color);
+            const label = this._pinNumbered ? String(i + 1) : null;
+            this._drawPin(ctx, px, py, p.color, label);
         }
     }
 
@@ -769,6 +823,11 @@ class ExtensionBlocks {
 
     clearPoints () {
         this._points = [];
+        return this._redraw();
+    }
+
+    setPinNumber (args) {
+        this._pinNumbered = Cast.toString(args.MODE) === 'on';
         return this._redraw();
     }
 
