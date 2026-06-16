@@ -147,7 +147,7 @@
     "extensionURLs": [
         [
             "gsiMap",
-            "https://asondemita.github.io/xcx-geo/dist/gsiMap.mjs"
+            "https://asondemita.github.io/xcx-map/dist/gsiMap.mjs"
         ]
     ],
     "meta": {
