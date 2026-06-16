@@ -21,7 +21,7 @@ const entry = {
     get name () {
         return formatMessage({
             id: 'map.entry.name',
-            defaultMessage: '地図 (Map)',
+            defaultMessage: '地図',
             description: 'name of the extension'
         });
     },

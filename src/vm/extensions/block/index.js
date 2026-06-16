@@ -85,7 +85,7 @@ class ExtensionBlocks {
     static get EXTENSION_NAME () {
         return formatMessage({
             id: 'map.name',
-            default: '地図 (Map)',
+            default: '地図',
             description: 'name of the extension'
         });
     }

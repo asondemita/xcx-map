@@ -4,11 +4,11 @@
     "map.entry.description": "Draw maps with OpenStreetMap tiles."
   },
   "ja": {
-    "map.entry.name": "地図 (Map)",
+    "map.entry.name": "地図",
     "map.entry.description": "OpenStreetMap で地図を描きます。"
   },
   "ja-Hira": {
-    "map.entry.name": "ちず (Map)",
+    "map.entry.name": "ちず",
     "map.entry.description": "オープンストリートマップでちずをかきます。"
   }
 }

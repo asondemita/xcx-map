@@ -23,7 +23,7 @@
     "map.color.black": "black"
   },
   "ja": {
-    "map.name": "地図 (Map)",
+    "map.name": "地図",
     "map.showMapAt": "緯度 [LAT] 経度 [LNG] ズーム [ZOOM] の地図を表示する",
     "map.setZoom": "ズームを [ZOOM] にする",
     "map.changeZoom": "ズームを [ZOOM] ずつ変える",
@@ -46,7 +46,7 @@
     "map.color.black": "黒"
   },
   "ja-Hira": {
-    "map.name": "ちず (Map)",
+    "map.name": "ちず",
     "map.showMapAt": "いど [LAT] けいど [LNG] ズーム [ZOOM] のちずをひょうじする",
     "map.setZoom": "ズームを [ZOOM] にする",
     "map.changeZoom": "ズームを [ZOOM] ずつかえる",

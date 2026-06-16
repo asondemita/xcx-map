@@ -7,14 +7,14 @@ var en$1 = {
 	"map.entry.description": "Draw maps with OpenStreetMap tiles."
 };
 var ja$1 = {
-	"map.entry.name": "地図 (Map)",
+	"map.entry.name": "地図",
 	"map.entry.description": "OpenStreetMap で地図を描きます。"
 };
 var translations$1 = {
 	en: en$1,
 	ja: ja$1,
 	"ja-Hira": {
-	"map.entry.name": "ちず (Map)",
+	"map.entry.name": "ちず",
 	"map.entry.description": "オープンストリートマップでちずをかきます。"
 }
 };
@@ -40,7 +40,7 @@ var entry = {
   get name() {
     return formatMessage$1({
       id: 'map.entry.name',
-      defaultMessage: '地図 (Map)',
+      defaultMessage: '地図',
       description: 'name of the extension'
     });
   },
@@ -746,7 +746,7 @@ var en = {
 	"map.color.black": "black"
 };
 var ja = {
-	"map.name": "地図 (Map)",
+	"map.name": "地図",
 	"map.showMapAt": "緯度 [LAT] 経度 [LNG] ズーム [ZOOM] の地図を表示する",
 	"map.setZoom": "ズームを [ZOOM] にする",
 	"map.changeZoom": "ズームを [ZOOM] ずつ変える",
@@ -772,7 +772,7 @@ var translations = {
 	en: en,
 	ja: ja,
 	"ja-Hira": {
-	"map.name": "ちず (Map)",
+	"map.name": "ちず",
 	"map.showMapAt": "いど [LAT] けいど [LNG] ズーム [ZOOM] のちずをひょうじする",
 	"map.setZoom": "ズームを [ZOOM] にする",
 	"map.changeZoom": "ズームを [ZOOM] ずつかえる",
@@ -1651,7 +1651,7 @@ var ExtensionBlocks = /*#__PURE__*/function () {
     get: function get() {
       return formatMessage({
         id: 'map.name',
-        default: '地図 (Map)',
+        default: '地図',
         description: 'name of the extension'
       });
     }
