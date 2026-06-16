@@ -2091,7 +2091,7 @@ var ExtensionBlocks = /*#__PURE__*/function () {
       // Zoom out at least one level, or far enough to frame both pins.
       var fitZoom = this._fitZoomForBounds(Math.min(from.lat, to.lat), Math.max(from.lat, to.lat), Math.min(from.lng, to.lng), Math.max(from.lng, to.lng));
       var dipZoom = Math.max(MIN_ZOOM, Math.min(fitZoom, startZoom - 1));
-      var steps = 30;
+      var steps = 60;
       var delayMs = 24;
       var frame = function frame(t) {
         _this5.centerLat = from.lat + (to.lat - from.lat) * t;
