@@ -1023,15 +1023,18 @@ class ExtensionBlocks {
 
     /**
      * Parse pasted CSV/TSV (lat, lng, name?, color?) into records. Rows split
-     * on newline or ';'; fields on tab or comma. If line breaks were stripped
-     * on paste (one flat token stream), records are rebuilt from the lat/lng
-     * number pairs (so columns repeat at a fixed period).
+     * on newline or ';'; fields on tab/comma, or on spaces when neither is
+     * present (spreadsheet tabs are sometimes turned into spaces on paste).
+     * If line breaks were stripped on paste (one flat token stream), records
+     * are rebuilt from the lat/lng number pairs (columns repeat at a period).
      * @param {string} raw - pasted text.
      * @returns {Array} - [{lat, lng, name, color}].
      */
     _plotParse (raw) {
         const text = Cast.toString(raw).replace(/\r\n?/g, '\n');
         const isNum = s => s !== '' && isFinite(Number(s));
+        // Split a line into fields: prefer tab/comma; fall back to whitespace.
+        const splitFields = s => ((/[\t,]/).test(s) ? s.split(/[\t,]/) : s.trim().split(/\s+/));
         const make = f => ({
             lat: Number(f[0]),
             lng: Number(f[1]),
@@ -1041,7 +1044,7 @@ class ExtensionBlocks {
         if ((/[\n;]/).test(text)) {
             const recs = [];
             for (const row of text.split(/[\n;]+/)) {
-                const f = row.split(/[\t,]/).map(s => s.trim());
+                const f = splitFields(row).map(s => s.trim());
                 if (f.length >= 2 && isNum(f[0]) && isNum(f[1])) {
                     recs.push(make(f));
                 }
@@ -1049,7 +1052,7 @@ class ExtensionBlocks {
             return recs;
         }
         // Flat stream (line breaks lost on paste): rebuild rows by column period.
-        const tok = text.split(/[\t,]/).map(s => s.trim());
+        const tok = splitFields(text).map(s => s.trim());
         let start = 0;
         while (start + 1 < tok.length && !(isNum(tok[start]) && isNum(tok[start + 1]))) {
             start++;

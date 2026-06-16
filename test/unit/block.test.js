@@ -295,6 +295,18 @@ describe("blockClass", () => {
         expect(block._points[1]).toMatchObject({ lat: 34.7, lng: 135.5, name: "大阪", color: "#1e88e5" });
     });
 
+    test("plotData accepts space-separated rows (sheet tabs turned to spaces)", () => {
+        const block = new blockClass(runtime);
+        block.clearPoints();
+        // newlines kept, but columns separated by spaces instead of tabs
+        block.plotData({
+            DATA: "36.63057    140.01274    4\n36.07554    139.49681    4\n35.48659    139.41362    3"
+        });
+        expect(block._points).toHaveLength(3);
+        expect(block._points[0]).toMatchObject({ lat: 36.63057, lng: 140.01274, name: "4" });
+        expect(block._points[2]).toMatchObject({ lat: 35.48659, lng: 139.41362, name: "3" });
+    });
+
     test("removePin removes the numbered pin (1-based), no-op if missing", () => {
         const block = new blockClass(runtime);
         block._points = [{ lat: 1, lng: 1 }, { lat: 2, lng: 2 }, { lat: 3, lng: 3 }];
