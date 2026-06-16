@@ -328,7 +328,7 @@ class ExtensionBlocks {
                     blockType: BlockType.COMMAND,
                     text: formatMessage({
                         id: 'map.fitToPoints',
-                        default: '全てのピンが見えるように地図を合わせる',
+                        default: '全てのピンが見えるように地図を調整する',
                         description: 'move and zoom the map so all pins are visible'
                     })
                 },
@@ -356,7 +356,7 @@ class ExtensionBlocks {
                     blockType: BlockType.COMMAND,
                     text: formatMessage({
                         id: 'map.showCurrentLocation',
-                        default: '現在位置を表示する',
+                        default: '現在位置の地図を表示する',
                         description: 'center the map on the current location'
                     })
                 },
