@@ -232,10 +232,10 @@ describe("blockClass", () => {
         expect(texts).toContain("1");
     });
 
-    test("pin number menu lists off then on, default off", () => {
+    test("pin number menu lists on then off, default off", () => {
         const block = new blockClass(runtime);
         const values = block.getPinNumberMenu().map(i => i.value);
-        expect(values).toEqual(["off", "on"]);
+        expect(values).toEqual(["on", "off"]);
         expect(block._pinNumbered).toBe(false);
     });
 

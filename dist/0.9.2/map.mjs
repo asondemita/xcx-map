@@ -769,18 +769,18 @@ var ja = {
 	"map.panHorizontal": "地図を横に [PIXELS] ピクセル移動する",
 	"map.panVertical": "地図を縦に [PIXELS] ピクセル移動する",
 	"map.setOpacity": "地図の透明度を [OPACITY] にする",
-	"map.addCenterPin": "地図の中心に [COLOR] のピンを立てる",
+	"map.addCenterPin": "地図の中心に [COLOR] 色のピンを立てる",
 	"map.setLastPinName": "直前のピンの名前を [NAME] にする",
-	"map.setPinName": "ピン [NUMBER] の名前を [NAME] にする",
-	"map.clearPoints": "ピンを全て消す",
+	"map.setPinName": "ピン番号 [NUMBER] の名前を [NAME] にする",
+	"map.clearPoints": "全てのピンを消す",
 	"map.fitToPoints": "全てのピンが見えるように地図を調整する",
-	"map.setPinNumber": "ピンを番号 [MODE] にする",
-	"map.pinNumber.off": "無し",
-	"map.pinNumber.on": "有り",
-	"map.scrollBetweenPins": "ピン [FROM] からピン [TO] へスクロール",
-	"map.pinDistance": "ピン [FROM] からピン [TO] までの距離(km)",
-	"map.mapLat": "中心の緯度",
-	"map.mapLng": "中心の経度",
+	"map.setPinNumber": "ピン番号を表示 [MODE]",
+	"map.pinNumber.off": "しない",
+	"map.pinNumber.on": "する",
+	"map.scrollBetweenPins": "ピン番号 [FROM] からピン番号 [TO] へスクロールする",
+	"map.pinDistance": "ピン番号 [FROM] からピン番号 [TO] までの距離(km)",
+	"map.mapLat": "中心からの緯度",
+	"map.mapLng": "中心からの経度",
 	"map.showCurrentLocation": "現在位置の地図を表示する",
 	"map.distance": "緯度 [LAT1] 経度 [LNG1] から 緯度 [LAT2] 経度 [LNG2] までの距離(km)",
 	"map.color.red": "赤",
@@ -807,18 +807,18 @@ var translations = {
 	"map.panHorizontal": "ちずをよこに [PIXELS] ピクセルうごかす",
 	"map.panVertical": "ちずをたてに [PIXELS] ピクセルうごかす",
 	"map.setOpacity": "ちずのとうめいどを [OPACITY] にする",
-	"map.addCenterPin": "ちずのちゅうしんに [COLOR] のピンをたてる",
+	"map.addCenterPin": "ちずのちゅうしんに [COLOR] いろのピンをたてる",
 	"map.setLastPinName": "ちょくぜんのピンのなまえを [NAME] にする",
-	"map.setPinName": "ピン [NUMBER] のなまえを [NAME] にする",
-	"map.clearPoints": "ピンをすべてけす",
+	"map.setPinName": "ピンばんごう [NUMBER] のなまえを [NAME] にする",
+	"map.clearPoints": "すべてのピンをけす",
 	"map.fitToPoints": "すべてのピンがみえるようにちずをちょうせいする",
-	"map.setPinNumber": "ピンをばんごう [MODE] にする",
-	"map.pinNumber.off": "なし",
-	"map.pinNumber.on": "あり",
-	"map.scrollBetweenPins": "ピン [FROM] からピン [TO] へスクロール",
-	"map.pinDistance": "ピン [FROM] からピン [TO] までのきょり(km)",
-	"map.mapLat": "ちゅうしんのいど",
-	"map.mapLng": "ちゅうしんのけいど",
+	"map.setPinNumber": "ピンばんごうをひょうじ [MODE]",
+	"map.pinNumber.off": "しない",
+	"map.pinNumber.on": "する",
+	"map.scrollBetweenPins": "ピンばんごう [FROM] からピンばんごう [TO] へスクロールする",
+	"map.pinDistance": "ピンばんごう [FROM] からピンばんごう [TO] までのきょり(km)",
+	"map.mapLat": "ちゅうしんからのいど",
+	"map.mapLng": "ちゅうしんからのけいど",
 	"map.showCurrentLocation": "げんざいちのちずをひょうじする",
 	"map.distance": "いど [LAT1] けいど [LNG1] から いど [LAT2] けいど [LNG2] までのきょり(km)",
 	"map.color.red": "あか",
@@ -971,6 +971,28 @@ var ExtensionBlocks = /*#__PURE__*/function () {
         blockIconURI: img,
         showStatusButton: false,
         blocks: [{
+          opcode: 'showCurrentLocation',
+          blockType: BlockType.COMMAND,
+          text: formatMessage({
+            id: 'map.showCurrentLocation',
+            default: '現在位置の地図を表示する',
+            description: 'center the map on the current location'
+          })
+        }, {
+          opcode: 'showMapByKeyword',
+          blockType: BlockType.COMMAND,
+          text: formatMessage({
+            id: 'map.showMapByKeyword',
+            default: '[KEYWORD] の地図を表示する',
+            description: 'search a place name and show its map'
+          }),
+          arguments: {
+            KEYWORD: {
+              type: ArgumentType.STRING,
+              defaultValue: '東京タワー'
+            }
+          }
+        }, {
           opcode: 'showMapAt',
           blockType: BlockType.COMMAND,
           text: formatMessage({
@@ -988,36 +1010,85 @@ var ExtensionBlocks = /*#__PURE__*/function () {
               defaultValue: 139.767125
             }
           }
-        }, {
-          opcode: 'showMapByKeyword',
+        }, '---', {
+          opcode: 'addCenterPin',
           blockType: BlockType.COMMAND,
           text: formatMessage({
-            id: 'map.showMapByKeyword',
-            default: '[KEYWORD] の地図を表示する',
-            description: 'search a place name and show its map'
+            id: 'map.addCenterPin',
+            default: '地図の中心に [COLOR] 色のピンを立てる',
+            description: 'drop a pin at the map center'
           }),
           arguments: {
-            KEYWORD: {
+            COLOR: {
               type: ArgumentType.STRING,
-              defaultValue: '東京タワー'
+              menu: 'pinColorMenu',
+              defaultValue: '#e53935'
             }
           }
         }, {
-          opcode: 'setMapType',
+          opcode: 'setLastPinName',
           blockType: BlockType.COMMAND,
           text: formatMessage({
-            id: 'map.setMapType',
-            default: '地図の種類を [TYPE] にする',
-            description: 'set the tile type'
+            id: 'map.setLastPinName',
+            default: '直前のピンの名前を [NAME] にする',
+            description: "set the most recent pin's name"
           }),
           arguments: {
-            TYPE: {
+            NAME: {
               type: ArgumentType.STRING,
-              menu: 'mapTypeMenu',
-              defaultValue: 'osm'
+              defaultValue: 'ココ'
             }
           }
         }, {
+          opcode: 'setPinName',
+          blockType: BlockType.COMMAND,
+          text: formatMessage({
+            id: 'map.setPinName',
+            default: 'ピン番号 [NUMBER] の名前を [NAME] にする',
+            description: "set a pin's name shown on the map"
+          }),
+          arguments: {
+            NUMBER: {
+              type: ArgumentType.NUMBER,
+              defaultValue: 1
+            },
+            NAME: {
+              type: ArgumentType.STRING,
+              defaultValue: 'ココ'
+            }
+          }
+        }, {
+          opcode: 'fitToPoints',
+          blockType: BlockType.COMMAND,
+          text: formatMessage({
+            id: 'map.fitToPoints',
+            default: '全てのピンが見えるように地図を調整する',
+            description: 'move and zoom the map so all pins are visible'
+          })
+        }, {
+          opcode: 'setPinNumber',
+          blockType: BlockType.COMMAND,
+          text: formatMessage({
+            id: 'map.setPinNumber',
+            default: 'ピン番号を表示 [MODE]',
+            description: 'show or hide pin order numbers'
+          }),
+          arguments: {
+            MODE: {
+              type: ArgumentType.STRING,
+              menu: 'pinNumberMenu',
+              defaultValue: 'off'
+            }
+          }
+        }, {
+          opcode: 'clearPoints',
+          blockType: BlockType.COMMAND,
+          text: formatMessage({
+            id: 'map.clearPoints',
+            default: '全てのピンを消す',
+            description: 'clear all pins'
+          })
+        }, '---', {
           opcode: 'setZoom',
           blockType: BlockType.COMMAND,
           text: formatMessage({
@@ -1074,122 +1145,12 @@ var ExtensionBlocks = /*#__PURE__*/function () {
             }
           }
         }, {
-          opcode: 'setOpacity',
-          blockType: BlockType.COMMAND,
-          text: formatMessage({
-            id: 'map.setOpacity',
-            default: '地図の透明度を [OPACITY] にする',
-            description: 'set the map layer transparency'
-          }),
-          arguments: {
-            OPACITY: {
-              type: ArgumentType.NUMBER,
-              defaultValue: 50
-            }
-          }
-        }, {
-          opcode: 'addCenterPin',
-          blockType: BlockType.COMMAND,
-          text: formatMessage({
-            id: 'map.addCenterPin',
-            default: '地図の中心に [COLOR] のピンを立てる',
-            description: 'drop a pin at the map center'
-          }),
-          arguments: {
-            COLOR: {
-              type: ArgumentType.STRING,
-              menu: 'pinColorMenu',
-              defaultValue: '#e53935'
-            }
-          }
-        }, {
-          opcode: 'setLastPinName',
-          blockType: BlockType.COMMAND,
-          text: formatMessage({
-            id: 'map.setLastPinName',
-            default: '直前のピンの名前を [NAME] にする',
-            description: "set the most recent pin's name"
-          }),
-          arguments: {
-            NAME: {
-              type: ArgumentType.STRING,
-              defaultValue: 'ココ'
-            }
-          }
-        }, {
-          opcode: 'setPinName',
-          blockType: BlockType.COMMAND,
-          text: formatMessage({
-            id: 'map.setPinName',
-            default: 'ピン [NUMBER] の名前を [NAME] にする',
-            description: "set a pin's name shown on the map"
-          }),
-          arguments: {
-            NUMBER: {
-              type: ArgumentType.NUMBER,
-              defaultValue: 1
-            },
-            NAME: {
-              type: ArgumentType.STRING,
-              defaultValue: 'ココ'
-            }
-          }
-        }, {
-          opcode: 'clearPoints',
-          blockType: BlockType.COMMAND,
-          text: formatMessage({
-            id: 'map.clearPoints',
-            default: 'ピンを全て消す',
-            description: 'clear all pins'
-          })
-        }, {
-          opcode: 'fitToPoints',
-          blockType: BlockType.COMMAND,
-          text: formatMessage({
-            id: 'map.fitToPoints',
-            default: '全てのピンが見えるように地図を調整する',
-            description: 'move and zoom the map so all pins are visible'
-          })
-        }, {
-          opcode: 'setPinNumber',
-          blockType: BlockType.COMMAND,
-          text: formatMessage({
-            id: 'map.setPinNumber',
-            default: 'ピンを番号 [MODE] にする',
-            description: 'turn pin order numbers on or off'
-          }),
-          arguments: {
-            MODE: {
-              type: ArgumentType.STRING,
-              menu: 'pinNumberMenu',
-              defaultValue: 'off'
-            }
-          }
-        }, {
           opcode: 'scrollBetweenPins',
           blockType: BlockType.COMMAND,
           text: formatMessage({
             id: 'map.scrollBetweenPins',
-            default: 'ピン [FROM] からピン [TO] へスクロール',
+            default: 'ピン番号 [FROM] からピン番号 [TO] へスクロールする',
             description: 'scroll the map from one pin to another'
-          }),
-          arguments: {
-            FROM: {
-              type: ArgumentType.NUMBER,
-              defaultValue: 1
-            },
-            TO: {
-              type: ArgumentType.NUMBER,
-              defaultValue: 2
-            }
-          }
-        }, {
-          opcode: 'pinDistance',
-          blockType: BlockType.REPORTER,
-          text: formatMessage({
-            id: 'map.pinDistance',
-            default: 'ピン [FROM] からピン [TO] までの距離(km)',
-            description: 'distance between two pins in kilometers'
           }),
           arguments: {
             FROM: {
@@ -1206,7 +1167,7 @@ var ExtensionBlocks = /*#__PURE__*/function () {
           blockType: BlockType.REPORTER,
           text: formatMessage({
             id: 'map.mapLat',
-            default: '中心の緯度',
+            default: '中心からの緯度',
             description: 'latitude of the map center'
           })
         }, {
@@ -1214,17 +1175,27 @@ var ExtensionBlocks = /*#__PURE__*/function () {
           blockType: BlockType.REPORTER,
           text: formatMessage({
             id: 'map.mapLng',
-            default: '中心の経度',
+            default: '中心からの経度',
             description: 'longitude of the map center'
           })
         }, {
-          opcode: 'showCurrentLocation',
-          blockType: BlockType.COMMAND,
+          opcode: 'pinDistance',
+          blockType: BlockType.REPORTER,
           text: formatMessage({
-            id: 'map.showCurrentLocation',
-            default: '現在位置の地図を表示する',
-            description: 'center the map on the current location'
-          })
+            id: 'map.pinDistance',
+            default: 'ピン番号 [FROM] からピン番号 [TO] までの距離(km)',
+            description: 'distance between two pins in kilometers'
+          }),
+          arguments: {
+            FROM: {
+              type: ArgumentType.NUMBER,
+              defaultValue: 1
+            },
+            TO: {
+              type: ArgumentType.NUMBER,
+              defaultValue: 2
+            }
+          }
         }, {
           opcode: 'distance',
           blockType: BlockType.REPORTER,
@@ -1249,6 +1220,35 @@ var ExtensionBlocks = /*#__PURE__*/function () {
             LNG2: {
               type: ArgumentType.NUMBER,
               defaultValue: 135.495951
+            }
+          }
+        }, '---', {
+          opcode: 'setMapType',
+          blockType: BlockType.COMMAND,
+          text: formatMessage({
+            id: 'map.setMapType',
+            default: '地図の種類を [TYPE] にする',
+            description: 'set the tile type'
+          }),
+          arguments: {
+            TYPE: {
+              type: ArgumentType.STRING,
+              menu: 'mapTypeMenu',
+              defaultValue: 'osm'
+            }
+          }
+        }, {
+          opcode: 'setOpacity',
+          blockType: BlockType.COMMAND,
+          text: formatMessage({
+            id: 'map.setOpacity',
+            default: '地図の透明度を [OPACITY] にする',
+            description: 'set the map layer transparency'
+          }),
+          arguments: {
+            OPACITY: {
+              type: ArgumentType.NUMBER,
+              defaultValue: 50
             }
           }
         }],
@@ -1277,18 +1277,18 @@ var ExtensionBlocks = /*#__PURE__*/function () {
     value: function getPinNumberMenu() {
       return [{
         text: formatMessage({
-          id: 'map.pinNumber.off',
-          default: '無し',
-          description: 'no pin numbers'
-        }),
-        value: 'off'
-      }, {
-        text: formatMessage({
           id: 'map.pinNumber.on',
-          default: '有り',
+          default: 'する',
           description: 'show pin numbers'
         }),
         value: 'on'
+      }, {
+        text: formatMessage({
+          id: 'map.pinNumber.off',
+          default: 'しない',
+          description: 'hide pin numbers'
+        }),
+        value: 'off'
       }];
     }
 
