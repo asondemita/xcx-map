@@ -48,6 +48,31 @@ describe("blockClass", () => {
         expect(block.latToY({ LAT: lat })).toBeCloseTo(80, 0);
     });
 
+    test("fit to points keeps every point inside the stage", () => {
+        const block = new blockClass(runtime);
+        const points = [
+            { LAT: 35.681236, LNG: 139.767125 }, // Tokyo
+            { LAT: 34.702485, LNG: 135.495951 }, // Osaka
+            { LAT: 43.068661, LNG: 141.350755 }  // Sapporo
+        ];
+        block.clearPoints();
+        for (const p of points) block.addPoint(p);
+        block.fitToPoints();
+        for (const p of points) {
+            expect(Math.abs(block.lngToX({ LNG: p.LNG }))).toBeLessThanOrEqual(240);
+            expect(Math.abs(block.latToY({ LAT: p.LAT }))).toBeLessThanOrEqual(180);
+        }
+    });
+
+    test("fit to a single point centers on it", () => {
+        const block = new blockClass(runtime);
+        block.clearPoints();
+        block.addPoint({ LAT: 34.702485, LNG: 135.495951 });
+        block.fitToPoints();
+        expect(block.mapLat()).toBeCloseTo(34.702485, 5);
+        expect(block.mapLng()).toBeCloseTo(135.495951, 5);
+    });
+
     test("distance between Tokyo and Osaka is about 400km", () => {
         const block = new blockClass(runtime);
         const km = block.distance({

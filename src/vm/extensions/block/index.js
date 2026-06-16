@@ -58,12 +58,6 @@ const TILE_SIZE = 256;
 const OSM_TILE_BASE = 'https://tile.openstreetmap.org';
 
 /**
- * GSI elevation API endpoint (latitude/longitude -> elevation in meters).
- * @type {string}
- */
-const GSI_ELEVATION_API = 'https://cyberjapandata2.gsi.go.jp/general/dem/scripts/getelevation.php';
-
-/**
  * Limit of the Web Mercator projection in degrees.
  * @type {number}
  */
@@ -140,7 +134,9 @@ class ExtensionBlocks {
         this.centerLat = 35.681236;
         this.centerLng = 139.767125;
         this.zoom = 13;
-        this.mapType = 'std';
+
+        // Points collected for "fit map to all points".
+        this._points = [];
 
         // Result of "get current location".
         this.currentLat = '';
@@ -223,20 +219,35 @@ class ExtensionBlocks {
                     }
                 },
                 {
-                    opcode: 'setMapType',
+                    opcode: 'clearPoints',
                     blockType: BlockType.COMMAND,
                     text: formatMessage({
-                        id: 'map.setMapType',
-                        default: '地図の種類を [TYPE] にする',
-                        description: 'set the kind of map tiles'
+                        id: 'map.clearPoints',
+                        default: '地点をすべて消す',
+                        description: 'clear all collected points'
+                    })
+                },
+                {
+                    opcode: 'addPoint',
+                    blockType: BlockType.COMMAND,
+                    text: formatMessage({
+                        id: 'map.addPoint',
+                        default: '地点 緯度 [LAT] 経度 [LNG] を追加する',
+                        description: 'add a point to fit'
                     }),
                     arguments: {
-                        TYPE: {
-                            type: ArgumentType.STRING,
-                            menu: 'mapTypeMenu',
-                            defaultValue: 'std'
-                        }
+                        LAT: {type: ArgumentType.NUMBER, defaultValue: 35.681236},
+                        LNG: {type: ArgumentType.NUMBER, defaultValue: 139.767125}
                     }
+                },
+                {
+                    opcode: 'fitToPoints',
+                    blockType: BlockType.COMMAND,
+                    text: formatMessage({
+                        id: 'map.fitToPoints',
+                        default: 'すべての地点が見えるように地図を合わせる',
+                        description: 'move and zoom the map so all points are visible'
+                    })
                 },
                 '---',
                 {
@@ -357,46 +368,9 @@ class ExtensionBlocks {
                         LAT2: {type: ArgumentType.NUMBER, defaultValue: 34.702485},
                         LNG2: {type: ArgumentType.NUMBER, defaultValue: 135.495951}
                     }
-                },
-                {
-                    opcode: 'elevation',
-                    blockType: BlockType.REPORTER,
-                    text: formatMessage({
-                        id: 'map.elevation',
-                        default: '緯度 [LAT] 経度 [LNG] の標高(m)',
-                        description: 'elevation at a point in meters'
-                    }),
-                    arguments: {
-                        LAT: {type: ArgumentType.NUMBER, defaultValue: 35.681236},
-                        LNG: {type: ArgumentType.NUMBER, defaultValue: 139.767125}
-                    }
                 }
-            ],
-            menus: {
-                mapTypeMenu: {
-                    acceptReporters: false,
-                    items: 'getMapTypeMenu'
-                }
-            }
+            ]
         };
-    }
-
-    /**
-     * @returns {Array} - items for the map type menu.
-     */
-    getMapTypeMenu () {
-        // OpenStreetMap standard tiles provide a single layer, so the menu
-        // offers only the standard map. The block is kept for compatibility.
-        return [
-            {
-                text: formatMessage({
-                    id: 'map.mapType.std',
-                    default: '標準地図',
-                    description: 'standard map'
-                }),
-                value: 'std'
-            }
-        ];
     }
 
     // ---- Web Mercator helpers ----
@@ -591,8 +565,65 @@ class ExtensionBlocks {
         return this._redraw();
     }
 
-    setMapType (args) {
-        this.mapType = Cast.toString(args.TYPE);
+    // ---- Blocks: fit to points ----
+
+    clearPoints () {
+        this._points = [];
+    }
+
+    addPoint (args) {
+        this._points.push({
+            lat: Cast.toNumber(args.LAT),
+            lng: Cast.toNumber(args.LNG)
+        });
+    }
+
+    /**
+     * Move and zoom the map so that every collected point is visible.
+     * Picks the largest integer zoom at which the points' bounding box
+     * fits inside the stage (minus a small margin), then centers on it.
+     * @returns {Promise|undefined} - resolves when the redraw is complete.
+     */
+    fitToPoints () {
+        if (this._points.length === 0) return;
+        if (this._points.length === 1) {
+            this.centerLat = this._points[0].lat;
+            this.centerLng = this._points[0].lng;
+            this.zoom = this._clampZoom(Math.min(MAX_ZOOM, 15));
+            return this._redraw();
+        }
+        // Leave a margin so points are not drawn on the very edge.
+        const PADDING = 24;
+        const usableWidth = STAGE_WIDTH - (PADDING * 2);
+        const usableHeight = STAGE_HEIGHT - (PADDING * 2);
+        const bounds = zoom => {
+            let minX = Infinity;
+            let maxX = -Infinity;
+            let minY = Infinity;
+            let maxY = -Infinity;
+            for (const p of this._points) {
+                const wx = this._lngToWorldX(p.lng, zoom);
+                const wy = this._latToWorldY(p.lat, zoom);
+                if (wx < minX) minX = wx;
+                if (wx > maxX) maxX = wx;
+                if (wy < minY) minY = wy;
+                if (wy > maxY) maxY = wy;
+            }
+            return {minX, maxX, minY, maxY};
+        };
+        // Search from the closest zoom outward for the first that fits.
+        let fitZoom = MIN_ZOOM;
+        for (let z = MAX_ZOOM; z >= MIN_ZOOM; z--) {
+            const b = bounds(z);
+            if ((b.maxX - b.minX) <= usableWidth && (b.maxY - b.minY) <= usableHeight) {
+                fitZoom = z;
+                break;
+            }
+        }
+        const b = bounds(fitZoom);
+        this.centerLng = this._worldXToLng((b.minX + b.maxX) / 2, fitZoom);
+        this.centerLat = this._worldYToLat((b.minY + b.maxY) / 2, fitZoom);
+        this.zoom = fitZoom;
         return this._redraw();
     }
 
@@ -636,7 +667,7 @@ class ExtensionBlocks {
         return this._worldYToLat(centerWorldY - y, this.zoom);
     }
 
-    // ---- Blocks: current location / distance / elevation ----
+    // ---- Blocks: current location / distance ----
 
     getCurrentLocation () {
         if (typeof navigator === 'undefined' || !navigator.geolocation) {
@@ -677,24 +708,6 @@ class ExtensionBlocks {
                 Math.sin(dLng / 2) * Math.sin(dLng / 2));
         const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
         return Math.round(earthRadiusKm * c * 1000) / 1000;
-    }
-
-    elevation (args) {
-        const lat = Cast.toNumber(args.LAT);
-        const lng = Cast.toNumber(args.LNG);
-        if (typeof fetch === 'undefined') {
-            return '';
-        }
-        const url = `${GSI_ELEVATION_API}?lon=${lng}&lat=${lat}&outtype=JSON`;
-        return fetch(url)
-            .then(response => response.json())
-            .then(data => {
-                const value = data && data.elevation;
-                if (typeof value === 'number') return value;
-                const num = Number(value);
-                return isNaN(num) ? '' : num;
-            })
-            .catch(() => '');
     }
 }
 

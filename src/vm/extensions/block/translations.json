@@ -5,7 +5,9 @@
     "map.setCenter": "move map to latitude [LAT] longitude [LNG]",
     "map.setZoom": "set zoom to [ZOOM]",
     "map.changeZoom": "change zoom by [ZOOM]",
-    "map.setMapType": "set map type to [TYPE]",
+    "map.clearPoints": "clear all points",
+    "map.addPoint": "add point latitude [LAT] longitude [LNG]",
+    "map.fitToPoints": "fit map so all points are visible",
     "map.mapLat": "map center latitude",
     "map.mapLng": "map center longitude",
     "map.mapZoom": "map zoom",
@@ -16,9 +18,7 @@
     "map.getCurrentLocation": "get current location",
     "map.currentLat": "current latitude",
     "map.currentLng": "current longitude",
-    "map.distance": "distance from latitude [LAT1] longitude [LNG1] to latitude [LAT2] longitude [LNG2] (km)",
-    "map.elevation": "elevation at latitude [LAT] longitude [LNG] (m)",
-    "map.mapType.std": "standard"
+    "map.distance": "distance from latitude [LAT1] longitude [LNG1] to latitude [LAT2] longitude [LNG2] (km)"
   },
   "ja": {
     "map.name": "地図 (Map)",
@@ -26,7 +26,9 @@
     "map.setCenter": "緯度 [LAT] 経度 [LNG] に地図を動かす",
     "map.setZoom": "ズームを [ZOOM] にする",
     "map.changeZoom": "ズームを [ZOOM] ずつ変える",
-    "map.setMapType": "地図の種類を [TYPE] にする",
+    "map.clearPoints": "地点をすべて消す",
+    "map.addPoint": "地点 緯度 [LAT] 経度 [LNG] を追加する",
+    "map.fitToPoints": "すべての地点が見えるように地図を合わせる",
     "map.mapLat": "地図の中心の緯度",
     "map.mapLng": "地図の中心の経度",
     "map.mapZoom": "地図のズーム",
@@ -37,9 +39,7 @@
     "map.getCurrentLocation": "現在地を取得する",
     "map.currentLat": "現在地の緯度",
     "map.currentLng": "現在地の経度",
-    "map.distance": "緯度 [LAT1] 経度 [LNG1] から 緯度 [LAT2] 経度 [LNG2] までの距離(km)",
-    "map.elevation": "緯度 [LAT] 経度 [LNG] の標高(m)",
-    "map.mapType.std": "標準地図"
+    "map.distance": "緯度 [LAT1] 経度 [LNG1] から 緯度 [LAT2] 経度 [LNG2] までの距離(km)"
   },
   "ja-Hira": {
     "map.name": "ちず (Map)",
@@ -47,7 +47,9 @@
     "map.setCenter": "いど [LAT] けいど [LNG] にちずをうごかす",
     "map.setZoom": "ズームを [ZOOM] にする",
     "map.changeZoom": "ズームを [ZOOM] ずつかえる",
-    "map.setMapType": "ちずのしゅるいを [TYPE] にする",
+    "map.clearPoints": "ちてんをすべてけす",
+    "map.addPoint": "ちてん いど [LAT] けいど [LNG] をついかする",
+    "map.fitToPoints": "すべてのちてんがみえるようにちずをあわせる",
     "map.mapLat": "ちずのちゅうしんのいど",
     "map.mapLng": "ちずのちゅうしんのけいど",
     "map.mapZoom": "ちずのズーム",
@@ -58,8 +60,6 @@
     "map.getCurrentLocation": "げんざいちをしゅとくする",
     "map.currentLat": "げんざいちのいど",
     "map.currentLng": "げんざいちのけいど",
-    "map.distance": "いど [LAT1] けいど [LNG1] から いど [LAT2] けいど [LNG2] までのきょり(km)",
-    "map.elevation": "いど [LAT] けいど [LNG] のひょうこう(m)",
-    "map.mapType.std": "ひょうじゅんちず"
+    "map.distance": "いど [LAT1] けいど [LNG1] から いど [LAT2] けいど [LNG2] までのきょり(km)"
   }
 }
