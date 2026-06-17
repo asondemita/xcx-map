@@ -378,6 +378,20 @@ class ExtensionBlocks {
                     }
                 },
                 {
+                    opcode: 'moveByDistance',
+                    blockType: BlockType.COMMAND,
+                    text: formatMessage({
+                        id: 'map.moveByDistance',
+                        default: '地図上で [DEGREES] 度方向に [DISTANCE] m を [SECONDS] 秒で移動する',
+                        description: 'glide the map center by a real-world distance along a compass bearing'
+                    }),
+                    arguments: {
+                        DEGREES: {type: ArgumentType.ANGLE, defaultValue: 90},
+                        DISTANCE: {type: ArgumentType.NUMBER, defaultValue: 100},
+                        SECONDS: {type: ArgumentType.NUMBER, defaultValue: 1}
+                    }
+                },
+                {
                     opcode: 'scrollBetweenPins',
                     blockType: BlockType.COMMAND,
                     text: formatMessage({
@@ -943,6 +957,74 @@ class ExtensionBlocks {
         const worldY = this._latToWorldY(this.centerLat, this.zoom) - dy;
         this.centerLat = this._worldYToLat(worldY, this.zoom);
         return this._redraw();
+    }
+
+    /**
+     * Spherical "destination point": the lat/lng reached by travelling
+     * DISTANCE meters from a start point along a compass bearing (0 = north,
+     * 90 = east, clockwise).
+     * @param {number} lat - start latitude in degrees.
+     * @param {number} lng - start longitude in degrees.
+     * @param {number} bearingDeg - bearing in degrees.
+     * @param {number} distanceM - distance in meters.
+     * @returns {object} - {lat, lng} of the destination in degrees.
+     */
+    _destinationPoint (lat, lng, bearingDeg, distanceM) {
+        const earthRadiusM = 6371000;
+        const toRad = deg => deg * Math.PI / 180;
+        const lat1 = toRad(lat);
+        const lng1 = toRad(lng);
+        const bearing = toRad(bearingDeg);
+        const delta = distanceM / earthRadiusM;
+        const lat2 = Math.asin(
+            (Math.sin(lat1) * Math.cos(delta)) +
+            (Math.cos(lat1) * Math.sin(delta) * Math.cos(bearing))
+        );
+        const lng2 = lng1 + Math.atan2(
+            Math.sin(bearing) * Math.sin(delta) * Math.cos(lat1),
+            Math.cos(delta) - (Math.sin(lat1) * Math.sin(lat2))
+        );
+        return {
+            lat: lat2 * 180 / Math.PI,
+            // Normalize longitude back into [-180, 180].
+            lng: ((((lng2 * 180 / Math.PI) + 540) % 360) - 180)
+        };
+    }
+
+    /**
+     * Move the map center DISTANCE meters along a compass bearing (0 = north,
+     * 90 = east, clockwise; matches Scratch's direction dial), gliding there
+     * over SECONDS seconds. With SECONDS <= 0 it jumps instantly.
+     * @param {object} args - block arguments (DEGREES, DISTANCE, SECONDS).
+     * @returns {Promise} - resolves when the move/animation finishes.
+     */
+    moveByDistance (args) {
+        const bearing = Cast.toNumber(args.DEGREES);
+        const distance = Cast.toNumber(args.DISTANCE);
+        const seconds = Cast.toNumber(args.SECONDS);
+        const startLat = this.centerLat;
+        const startLng = this.centerLng;
+        if (!(seconds > 0)) {
+            const dest = this._destinationPoint(startLat, startLng, bearing, distance);
+            this.centerLat = dest.lat;
+            this.centerLng = dest.lng;
+            return this._redraw();
+        }
+        // Glide by advancing the travelled distance along the bearing so the
+        // center stays exactly on the path the whole way.
+        const totalMs = seconds * 1000;
+        const startTime = Date.now();
+        const animate = () => {
+            const t = Math.min(1, (Date.now() - startTime) / totalMs);
+            const dest = this._destinationPoint(startLat, startLng, bearing, distance * t);
+            this.centerLat = dest.lat;
+            this.centerLng = dest.lng;
+            return Promise.resolve(this._redraw()).then(() => {
+                if (t >= 1) return;
+                return new Promise(resolve => setTimeout(resolve, 24)).then(animate);
+            });
+        };
+        return animate();
     }
 
     // Transparency 0 = opaque, 100 = fully transparent (Scratch ghost effect).
