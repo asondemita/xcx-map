@@ -394,6 +394,36 @@ describe("blockClass", () => {
         expect(() => block.showCurrentLocation()).not.toThrow();
     });
 
+    test("_destinationPoint travels the right bearing and distance", () => {
+        const block = new blockClass(runtime);
+        const lat = 35.681236;
+        const lng = 139.767125;
+        const north = block._destinationPoint(lat, lng, 0, 1000);
+        expect(north.lat).toBeGreaterThan(lat);
+        expect(north.lng).toBeCloseTo(lng, 6);
+        const east = block._destinationPoint(lat, lng, 90, 1000);
+        expect(east.lng).toBeGreaterThan(lng);
+        expect(east.lat).toBeCloseTo(lat, 4);
+        // distance is ~1000 m
+        const meters = block._haversineKm(lat, lng, east.lat, east.lng) * 1000;
+        expect(meters).toBeGreaterThan(999);
+        expect(meters).toBeLessThan(1001);
+        // longitude wraps across the antimeridian into [-180, 180]
+        const wrap = block._destinationPoint(0, 179.99, 90, 5000);
+        expect(wrap.lng).toBeLessThan(0);
+        expect(wrap.lng).toBeGreaterThan(-180);
+    });
+
+    test("moveByDistance with seconds<=0 jumps to the destination", () => {
+        const block = new blockClass(runtime);
+        block.centerLat = 35.681236;
+        block.centerLng = 139.767125;
+        const beforeLng = block.centerLng;
+        block.moveByDistance({ DEGREES: 90, DISTANCE: 1000, SECONDS: 0 });
+        expect(block.centerLng).toBeGreaterThan(beforeLng); // moved east
+        expect(block.centerLat).toBeCloseTo(35.681236, 4);
+    });
+
     test("distance between Tokyo and Osaka is about 400km", () => {
         const block = new blockClass(runtime);
         const km = block.distance({
