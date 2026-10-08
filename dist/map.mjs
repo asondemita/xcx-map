@@ -19,7 +19,7 @@ var translations$1 = {
 }
 };
 
-var version$1 = "1.1.0";
+var version$1 = "1.2.0";
 
 /**
  * This is an extension for Xcratch.
