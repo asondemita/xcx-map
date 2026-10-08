@@ -477,6 +477,108 @@ describe("blockClass", () => {
         });
     });
 
+    describe("reverse geocoding (addressAt / postcodeAt)", () => {
+        const tokyo = {
+            road: "エレベーター;地下1階", neighbourhood: "丸の内一丁目", quarter: "丸の内",
+            city: "千代田区", "ISO3166-2-lvl4": "JP-13", postcode: "100-0005",
+            country: "日本", country_code: "jp"
+        };
+        // Install a fake fetch that answers with the given Nominatim body
+        // and counts requests.
+        const installFetch = body => {
+            const calls = { count: 0, urls: [] };
+            global.fetch = url => {
+                calls.count += 1;
+                calls.urls.push(url);
+                return Promise.resolve({ json: () => Promise.resolve(body) });
+            };
+            return calls;
+        };
+
+        afterEach(() => {
+            delete global.fetch;
+        });
+
+        test("return '' without fetch", async () => {
+            const block = new blockClass(runtime);
+            expect(await block.addressAt({ LAT: 35.68, LNG: 139.76 })).toBe("");
+            expect(await block.postcodeAt({ LAT: 35.68, LNG: 139.76 })).toBe("");
+        });
+
+        test("build a Japanese address and postal code from the Nominatim response", async () => {
+            const calls = installFetch({ address: tokyo });
+            const block = new blockClass(runtime);
+            expect(await block.addressAt({ LAT: 35.681236, LNG: 139.767125 }))
+                .toBe("東京都千代田区丸の内一丁目");
+            expect(await block.postcodeAt({ LAT: 35.681236, LNG: 139.767125 })).toBe("100-0005");
+            // Both reads of the same point share one request.
+            expect(calls.count).toBe(1);
+            expect(calls.urls[0]).toContain("nominatim.openstreetmap.org/reverse");
+            expect(calls.urls[0]).toContain("lat=35.681236");
+            expect(calls.urls[0]).toContain("lon=139.767125");
+        });
+
+        test("_formatAddress keeps 郡/村/字 order and drops duplicates", () => {
+            const block = new blockClass(runtime);
+            // 丁目 present -> the hamlet (a nearby named area) is left out.
+            expect(block._formatAddress({
+                road: "大通", neighbourhood: "大通西5丁目", hamlet: "狸小路", suburb: "中央区",
+                city: "札幌市", subprovince: "石狩振興局", province: "北海道",
+                region: "北海道地方", country_code: "jp"
+            })).toBe("北海道札幌市中央区大通西5丁目");
+            // Prefecture given explicitly is not duplicated from the ISO code.
+            expect(block._formatAddress({
+                city: "那覇市", province: "沖縄県", "ISO3166-2-lvl4": "JP-47", country_code: "jp"
+            })).toBe("沖縄県那覇市");
+            expect(block._formatAddress({
+                quarter: "北城", hamlet: "森山", village: "白馬村", county: "北安曇郡",
+                province: "長野県", country_code: "jp"
+            })).toBe("長野県北安曇郡白馬村北城森山");
+            expect(block._formatAddress({
+                city_district: "パリ", city: "パリ", suburb: "4区",
+                state: "イル＝ド＝フランス地域圏", country_code: "fr"
+            })).toBe("イル＝ド＝フランス地域圏, パリ, 4区");
+            expect(block._formatAddress(null)).toBe("");
+            expect(block._formatAddress({ road: "大通" })).toBe("");
+        });
+
+        test("return '' when Nominatim reports an error or no address", async () => {
+            installFetch({ error: "Unable to geocode" });
+            const block = new blockClass(runtime);
+            expect(await block.addressAt({ LAT: 0, LNG: 0 })).toBe("");
+            expect(await block.postcodeAt({ LAT: 0, LNG: 0 })).toBe("");
+        });
+
+        test("return '' and do not cache when the request fails", async () => {
+            let count = 0;
+            global.fetch = () => {
+                count += 1;
+                return Promise.reject(new Error("network"));
+            };
+            const block = new blockClass(runtime);
+            expect(await block.addressAt({ LAT: 35.68, LNG: 139.76 })).toBe("");
+            expect(await block.addressAt({ LAT: 35.68, LNG: 139.76 })).toBe("");
+            expect(count).toBe(2);
+        });
+
+        test("invalid coordinates return '' without a request", async () => {
+            const calls = installFetch({ address: tokyo });
+            const block = new blockClass(runtime);
+            expect(await block.addressAt({ LAT: 91, LNG: 0 })).toBe("");
+            expect(await block.postcodeAt({ LAT: 0, LNG: 181 })).toBe("");
+            expect(calls.count).toBe(0);
+        });
+
+        test("cache is bounded", async () => {
+            installFetch({ address: tokyo });
+            const block = new blockClass(runtime);
+            for (let i = 0; i < 205; i++) {
+                await block.postcodeAt({ LAT: 10 + (i * 0.01), LNG: 10 });
+            }
+            expect(block._reverseGeocodeCache.size).toBe(200);
+        });
+    });
+
     test("_destinationPoint travels the right bearing and distance", () => {
         const block = new blockClass(runtime);
         const lat = 35.681236;

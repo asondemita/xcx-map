@@ -68,10 +68,6 @@ var entry = {
   translationMap: translations$1
 };
 
-function _classCallCheck(a, n) {
-  if (!(a instanceof n)) throw new TypeError("Cannot call a class as a function");
-}
-
 function _typeof(o) {
   "@babel/helpers - typeof";
 
@@ -80,6 +76,10 @@ function _typeof(o) {
   } : function (o) {
     return o && "function" == typeof Symbol && o.constructor === Symbol && o !== Symbol.prototype ? "symbol" : typeof o;
   }, _typeof(o);
+}
+
+function _classCallCheck(a, n) {
+  if (!(a instanceof n)) throw new TypeError("Cannot call a class as a function");
 }
 
 function toPrimitive(t, r) {
@@ -754,6 +754,8 @@ var en = {
 	"map.currentLng": "current longitude",
 	"map.showCurrentLocation": "show map of current location",
 	"map.distance": "distance from latitude [LAT1] longitude [LNG1] to latitude [LAT2] longitude [LNG2] (km)",
+	"map.addressAt": "address at latitude [LAT] longitude [LNG]",
+	"map.postcodeAt": "postal code at latitude [LAT] longitude [LNG]",
 	"map.color.red": "red",
 	"map.color.yellow": "yellow",
 	"map.color.blue": "blue",
@@ -795,6 +797,8 @@ var ja = {
 	"map.currentLng": "現在位置の経度",
 	"map.showCurrentLocation": "現在位置の地図を表示する",
 	"map.distance": "緯度 [LAT1] 経度 [LNG1] から 緯度 [LAT2] 経度 [LNG2] までの距離(km)",
+	"map.addressAt": "緯度 [LAT] 経度 [LNG] の住所",
+	"map.postcodeAt": "緯度 [LAT] 経度 [LNG] の郵便番号",
 	"map.color.red": "赤",
 	"map.color.yellow": "黄",
 	"map.color.blue": "青",
@@ -839,6 +843,8 @@ var translations = {
 	"map.currentLng": "げんざいちのけいど",
 	"map.showCurrentLocation": "げんざいちのちずをひょうじする",
 	"map.distance": "いど [LAT1] けいど [LNG1] から いど [LAT2] けいど [LNG2] までのきょり(km)",
+	"map.addressAt": "いど [LAT] けいど [LNG] のじゅうしょ",
+	"map.postcodeAt": "いど [LAT] けいど [LNG] のゆうびんばんごう",
 	"map.color.red": "あか",
 	"map.color.yellow": "きいろ",
 	"map.color.blue": "あお",
@@ -936,6 +942,28 @@ var CURRENT_LOCATION_CACHE_MS = 5000;
  * @type {number}
  */
 var GEOLOCATION_TIMEOUT_MS = 10000;
+
+/**
+ * Nominatim address parts used to build a readable address, largest area
+ * first. Roads, house numbers, regions and the country are left out.
+ * @type {string[]}
+ */
+var ADDRESS_PARTS = ['province', 'state', 'county', 'city', 'town', 'village', 'city_district', 'suburb', 'quarter', 'neighbourhood', 'hamlet'];
+
+/**
+ * Japanese prefecture names in ISO 3166-2 order (JP-01 .. JP-47).
+ * Nominatim omits the prefecture for Tokyo's 23 wards (and some other
+ * places) and only reports the code in "ISO3166-2-lvl4", so the name is
+ * filled in from this list.
+ * @type {string[]}
+ */
+var JP_PREFECTURES = ['北海道', '青森県', '岩手県', '宮城県', '秋田県', '山形県', '福島県', '茨城県', '栃木県', '群馬県', '埼玉県', '千葉県', '東京都', '神奈川県', '新潟県', '富山県', '石川県', '福井県', '山梨県', '長野県', '岐阜県', '静岡県', '愛知県', '三重県', '滋賀県', '京都府', '大阪府', '兵庫県', '奈良県', '和歌山県', '鳥取県', '島根県', '岡山県', '広島県', '山口県', '徳島県', '香川県', '愛媛県', '高知県', '福岡県', '佐賀県', '長崎県', '熊本県', '大分県', '宮崎県', '鹿児島県', '沖縄県'];
+
+/**
+ * Maximum number of reverse-geocode results kept in memory.
+ * @type {number}
+ */
+var REVERSE_GEOCODE_CACHE_SIZE = 200;
 var MIN_ZOOM = 0;
 
 /**
@@ -993,6 +1021,9 @@ var ExtensionBlocks = /*#__PURE__*/function () {
 
     // In-flight geolocation request, shared by concurrent callers.
     this._currentLocationRequest = null;
+
+    // Reverse-geocode results keyed by rounded "lat,lng" (Promise of address|null).
+    this._reverseGeocodeCache = new Map();
   }
 
   /**
@@ -1338,6 +1369,42 @@ var ExtensionBlocks = /*#__PURE__*/function () {
             LNG2: {
               type: ArgumentType.NUMBER,
               defaultValue: 135.495951
+            }
+          }
+        }, {
+          opcode: 'addressAt',
+          blockType: BlockType.REPORTER,
+          text: formatMessage({
+            id: 'map.addressAt',
+            default: '緯度 [LAT] 経度 [LNG] の住所',
+            description: 'address of a point (reverse geocoding)'
+          }),
+          arguments: {
+            LAT: {
+              type: ArgumentType.NUMBER,
+              defaultValue: 35.681236
+            },
+            LNG: {
+              type: ArgumentType.NUMBER,
+              defaultValue: 139.767125
+            }
+          }
+        }, {
+          opcode: 'postcodeAt',
+          blockType: BlockType.REPORTER,
+          text: formatMessage({
+            id: 'map.postcodeAt',
+            default: '緯度 [LAT] 経度 [LNG] の郵便番号',
+            description: 'postal code of a point (reverse geocoding)'
+          }),
+          arguments: {
+            LAT: {
+              type: ArgumentType.NUMBER,
+              defaultValue: 35.681236
+            },
+            LNG: {
+              type: ArgumentType.NUMBER,
+              defaultValue: 139.767125
             }
           }
         }, '---', {
@@ -1913,6 +1980,114 @@ var ExtensionBlocks = /*#__PURE__*/function () {
         return _this2._redraw();
       }).catch(function () {});
     }
+
+    /**
+     * Reverse-geocode a point with OpenStreetMap Nominatim.
+     * NOTE: this sends the coordinates to the Nominatim server.
+     * Results are cached per rounded coordinate so repeated reads of the same
+     * point (e.g. 住所 then 郵便番号) cost one request. Subject to the
+     * Nominatim usage policy (max ~1 request/second, no bulk use).
+     * @param {number} lat - latitude.
+     * @param {number} lng - longitude.
+     * @returns {Promise<object|null>} - Nominatim "address" object, or null.
+     */
+  }, {
+    key: "_reverseGeocode",
+    value: function _reverseGeocode(lat, lng) {
+      if (!Number.isFinite(lat) || !Number.isFinite(lng) || Math.abs(lat) > 90 || Math.abs(lng) > 180 || typeof fetch === 'undefined') {
+        return Promise.resolve(null);
+      }
+      var key = "".concat(lat.toFixed(4), ",").concat(lng.toFixed(4));
+      var cache = this._reverseGeocodeCache;
+      if (cache.has(key)) return cache.get(key);
+      var url = 'https://nominatim.openstreetmap.org/reverse' + "?lat=".concat(encodeURIComponent(lat), "&lon=").concat(encodeURIComponent(lng)) + '&format=json&zoom=18&accept-language=ja';
+      var request = fetch(url, {
+        headers: {
+          Accept: 'application/json'
+        }
+      }).then(function (response) {
+        return response.json();
+      }).then(function (data) {
+        if (!data || _typeof(data) !== 'object' || data.error || !data.address) {
+          return null;
+        }
+        return data.address;
+      }).catch(function () {
+        // Do not remember transient failures (network, rate limit).
+        cache.delete(key);
+        return null;
+      });
+      if (cache.size >= REVERSE_GEOCODE_CACHE_SIZE) {
+        cache.delete(cache.keys().next().value);
+      }
+      cache.set(key, request);
+      return request;
+    }
+
+    /**
+     * Build a readable address from a Nominatim address object.
+     * Japanese addresses are joined without separators from the largest area
+     * down (東京都千代田区丸の内一丁目); others are joined with ", ".
+     * A part is dropped when a later, more specific part starts with it
+     * (丸の内 / 丸の内一丁目) or repeats it. The hamlet (字) is skipped when a
+     * neighbourhood (丁目) is present, since Nominatim then reports a nearby
+     * named area rather than part of the address. A missing Japanese
+     * prefecture is filled in from the ISO 3166-2 code.
+     * @param {object} address - Nominatim "address" object.
+     * @returns {string} - the address, or '' when nothing usable.
+     */
+  }, {
+    key: "_formatAddress",
+    value: function _formatAddress(address) {
+      if (!address) return '';
+      var isJapan = address.country_code === 'jp';
+      var keys = ADDRESS_PARTS.filter(function (key) {
+        return !(key === 'hamlet' && address.neighbourhood);
+      });
+      var parts = keys.map(function (key) {
+        return typeof address[key] === 'string' ? address[key].trim() : '';
+      }).filter(function (part) {
+        return part !== '';
+      });
+      if (isJapan && !address.province && !address.state) {
+        var code = /^JP-(\d{2})$/.exec(address['ISO3166-2-lvl4'] || '');
+        var prefecture = code ? JP_PREFECTURES[Number(code[1]) - 1] : null;
+        if (prefecture) parts.unshift(prefecture);
+      }
+      var kept = parts.filter(function (part, i) {
+        return !parts.slice(i + 1).some(function (later) {
+          return later.startsWith(part);
+        });
+      });
+      return kept.join(isJapan ? '' : ', ');
+    }
+
+    /**
+     * Address of a point (reverse geocoding via Nominatim).
+     * @param {object} args - block arguments.
+     * @returns {Promise<string>} - address, or '' when unavailable.
+     */
+  }, {
+    key: "addressAt",
+    value: function addressAt(args) {
+      var _this3 = this;
+      return this._reverseGeocode(Cast.toNumber(args.LAT), Cast.toNumber(args.LNG)).then(function (address) {
+        return _this3._formatAddress(address);
+      });
+    }
+
+    /**
+     * Postal code of a point (reverse geocoding via Nominatim).
+     * @param {object} args - block arguments.
+     * @returns {Promise<string>} - postal code, or '' when unavailable.
+     */
+  }, {
+    key: "postcodeAt",
+    value: function postcodeAt(args) {
+      return this._reverseGeocode(Cast.toNumber(args.LAT), Cast.toNumber(args.LNG)).then(function (address) {
+        return address && typeof address.postcode === 'string' ? address.postcode : '';
+      });
+    }
   }, {
     key: "setMapType",
     value: function setMapType(args) {
@@ -1997,7 +2172,7 @@ var ExtensionBlocks = /*#__PURE__*/function () {
   }, {
     key: "moveByDistance",
     value: function moveByDistance(args) {
-      var _this3 = this;
+      var _this4 = this;
       var bearing = Cast.toNumber(args.DEGREES);
       var distance = Cast.toNumber(args.DISTANCE);
       var seconds = Cast.toNumber(args.SECONDS);
@@ -2015,10 +2190,10 @@ var ExtensionBlocks = /*#__PURE__*/function () {
       var startTime = Date.now();
       var _animate = function animate() {
         var t = Math.min(1, (Date.now() - startTime) / totalMs);
-        var dest = _this3._destinationPoint(startLat, startLng, bearing, distance * t);
-        _this3.centerLat = dest.lat;
-        _this3.centerLng = dest.lng;
-        return Promise.resolve(_this3._redraw()).then(function () {
+        var dest = _this4._destinationPoint(startLat, startLng, bearing, distance * t);
+        _this4.centerLat = dest.lat;
+        _this4.centerLng = dest.lng;
+        return Promise.resolve(_this4._redraw()).then(function () {
           if (t >= 1) return;
           return new Promise(function (resolve) {
             return setTimeout(resolve, 24);
@@ -2225,7 +2400,7 @@ var ExtensionBlocks = /*#__PURE__*/function () {
   }, {
     key: "fitToPoints",
     value: function fitToPoints() {
-      var _this4 = this;
+      var _this5 = this;
       if (this._points.length === 0) return;
       if (this._points.length === 1) {
         this.centerLat = this._points[0].lat;
@@ -2242,13 +2417,13 @@ var ExtensionBlocks = /*#__PURE__*/function () {
         var maxX = -Infinity;
         var minY = Infinity;
         var maxY = -Infinity;
-        var _iterator4 = _createForOfIteratorHelper(_this4._points),
+        var _iterator4 = _createForOfIteratorHelper(_this5._points),
           _step4;
         try {
           for (_iterator4.s(); !(_step4 = _iterator4.n()).done;) {
             var p = _step4.value;
-            var wx = _this4._lngToWorldX(p.lng, zoom);
-            var wy = _this4._latToWorldY(p.lat, zoom);
+            var wx = _this5._lngToWorldX(p.lng, zoom);
+            var wy = _this5._latToWorldY(p.lat, zoom);
             if (wx < minX) minX = wx;
             if (wx > maxX) maxX = wx;
             if (wy < minY) minY = wy;
@@ -2336,7 +2511,7 @@ var ExtensionBlocks = /*#__PURE__*/function () {
   }, {
     key: "_getCurrentLocation",
     value: function _getCurrentLocation(maxAgeMs) {
-      var _this5 = this;
+      var _this6 = this;
       var cached = this._currentLocation;
       if (cached && Date.now() - cached.time < maxAgeMs) {
         return Promise.resolve(cached.lat === null ? null : {
@@ -2354,7 +2529,7 @@ var ExtensionBlocks = /*#__PURE__*/function () {
         navigator.geolocation.getCurrentPosition(function (position) {
           var lat = position.coords.latitude;
           var lng = position.coords.longitude;
-          _this5._currentLocation = {
+          _this6._currentLocation = {
             lat: lat,
             lng: lng,
             time: Date.now()
@@ -2364,7 +2539,7 @@ var ExtensionBlocks = /*#__PURE__*/function () {
             lng: lng
           });
         }, function () {
-          _this5._currentLocation = {
+          _this6._currentLocation = {
             lat: null,
             lng: null,
             time: Date.now()
@@ -2376,7 +2551,7 @@ var ExtensionBlocks = /*#__PURE__*/function () {
           maximumAge: 0
         });
       }).then(function (result) {
-        _this5._currentLocationRequest = null;
+        _this6._currentLocationRequest = null;
         return result;
       });
       return this._currentLocationRequest;
@@ -2389,12 +2564,12 @@ var ExtensionBlocks = /*#__PURE__*/function () {
   }, {
     key: "showCurrentLocation",
     value: function showCurrentLocation() {
-      var _this6 = this;
+      var _this7 = this;
       return this._getCurrentLocation(0).then(function (location) {
         if (!location) return;
-        _this6.centerLat = location.lat;
-        _this6.centerLng = location.lng;
-        return _this6._redraw();
+        _this7.centerLat = location.lat;
+        _this7.centerLng = location.lng;
+        return _this7._redraw();
       });
     }
 
@@ -2536,7 +2711,7 @@ var ExtensionBlocks = /*#__PURE__*/function () {
   }, {
     key: "scrollBetweenPins",
     value: function scrollBetweenPins(args) {
-      var _this7 = this;
+      var _this8 = this;
       var from = this._points[Cast.toNumber(args.FROM) - 1];
       var to = this._points[Cast.toNumber(args.TO) - 1];
       if (!from || !to) {
@@ -2551,16 +2726,16 @@ var ExtensionBlocks = /*#__PURE__*/function () {
       var delayMs = 24;
       var frame = function frame(t) {
         var p = path(t);
-        _this7.centerLng = _this7._worldXToLng(p.x, startZoom);
-        _this7.centerLat = _this7._worldYToLat(p.y, startZoom);
+        _this8.centerLng = _this8._worldXToLng(p.x, startZoom);
+        _this8.centerLat = _this8._worldYToLat(p.y, startZoom);
         // w = STAGE_WIDTH * 2^(startZoom - z)  ->  z = startZoom - log2(w/STAGE_WIDTH)
         var z = startZoom - Math.log(p.w / STAGE_WIDTH) / Math.LN2;
-        return Promise.resolve(_this7._redraw(Math.max(MIN_ZOOM, Math.min(maxZoom, z))));
+        return Promise.resolve(_this8._redraw(Math.max(MIN_ZOOM, Math.min(maxZoom, z))));
       };
       var _animate2 = function animate(i) {
         return frame(i / steps).then(function () {
           if (i >= steps) {
-            _this7.zoom = startZoom;
+            _this8.zoom = startZoom;
             return;
           }
           return new Promise(function (resolve) {

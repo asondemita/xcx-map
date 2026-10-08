@@ -87,6 +87,39 @@ const CURRENT_LOCATION_CACHE_MS = 5000;
  */
 const GEOLOCATION_TIMEOUT_MS = 10000;
 
+/**
+ * Nominatim address parts used to build a readable address, largest area
+ * first. Roads, house numbers, regions and the country are left out.
+ * @type {string[]}
+ */
+const ADDRESS_PARTS = [
+    'province', 'state', 'county', 'city', 'town', 'village',
+    'city_district', 'suburb', 'quarter', 'neighbourhood', 'hamlet'
+];
+
+/**
+ * Japanese prefecture names in ISO 3166-2 order (JP-01 .. JP-47).
+ * Nominatim omits the prefecture for Tokyo's 23 wards (and some other
+ * places) and only reports the code in "ISO3166-2-lvl4", so the name is
+ * filled in from this list.
+ * @type {string[]}
+ */
+const JP_PREFECTURES = [
+    '北海道', '青森県', '岩手県', '宮城県', '秋田県', '山形県', '福島県',
+    '茨城県', '栃木県', '群馬県', '埼玉県', '千葉県', '東京都', '神奈川県',
+    '新潟県', '富山県', '石川県', '福井県', '山梨県', '長野県', '岐阜県',
+    '静岡県', '愛知県', '三重県', '滋賀県', '京都府', '大阪府', '兵庫県',
+    '奈良県', '和歌山県', '鳥取県', '島根県', '岡山県', '広島県', '山口県',
+    '徳島県', '香川県', '愛媛県', '高知県', '福岡県', '佐賀県', '長崎県',
+    '熊本県', '大分県', '宮崎県', '鹿児島県', '沖縄県'
+];
+
+/**
+ * Maximum number of reverse-geocode results kept in memory.
+ * @type {number}
+ */
+const REVERSE_GEOCODE_CACHE_SIZE = 200;
+
 const MIN_ZOOM = 0;
 
 /**
@@ -188,6 +221,9 @@ class ExtensionBlocks {
 
         // In-flight geolocation request, shared by concurrent callers.
         this._currentLocationRequest = null;
+
+        // Reverse-geocode results keyed by rounded "lat,lng" (Promise of address|null).
+        this._reverseGeocodeCache = new Map();
     }
 
     /**
@@ -487,6 +523,32 @@ class ExtensionBlocks {
                         LNG1: {type: ArgumentType.NUMBER, defaultValue: 139.767125},
                         LAT2: {type: ArgumentType.NUMBER, defaultValue: 34.702485},
                         LNG2: {type: ArgumentType.NUMBER, defaultValue: 135.495951}
+                    }
+                },
+                {
+                    opcode: 'addressAt',
+                    blockType: BlockType.REPORTER,
+                    text: formatMessage({
+                        id: 'map.addressAt',
+                        default: '緯度 [LAT] 経度 [LNG] の住所',
+                        description: 'address of a point (reverse geocoding)'
+                    }),
+                    arguments: {
+                        LAT: {type: ArgumentType.NUMBER, defaultValue: 35.681236},
+                        LNG: {type: ArgumentType.NUMBER, defaultValue: 139.767125}
+                    }
+                },
+                {
+                    opcode: 'postcodeAt',
+                    blockType: BlockType.REPORTER,
+                    text: formatMessage({
+                        id: 'map.postcodeAt',
+                        default: '緯度 [LAT] 経度 [LNG] の郵便番号',
+                        description: 'postal code of a point (reverse geocoding)'
+                    }),
+                    arguments: {
+                        LAT: {type: ArgumentType.NUMBER, defaultValue: 35.681236},
+                        LNG: {type: ArgumentType.NUMBER, defaultValue: 139.767125}
                     }
                 },
                 '---',
@@ -959,6 +1021,96 @@ class ExtensionBlocks {
                 return this._redraw();
             })
             .catch(() => {});
+    }
+
+    /**
+     * Reverse-geocode a point with OpenStreetMap Nominatim.
+     * NOTE: this sends the coordinates to the Nominatim server.
+     * Results are cached per rounded coordinate so repeated reads of the same
+     * point (e.g. 住所 then 郵便番号) cost one request. Subject to the
+     * Nominatim usage policy (max ~1 request/second, no bulk use).
+     * @param {number} lat - latitude.
+     * @param {number} lng - longitude.
+     * @returns {Promise<object|null>} - Nominatim "address" object, or null.
+     */
+    _reverseGeocode (lat, lng) {
+        if (!Number.isFinite(lat) || !Number.isFinite(lng) ||
+            Math.abs(lat) > 90 || Math.abs(lng) > 180 || typeof fetch === 'undefined') {
+            return Promise.resolve(null);
+        }
+        const key = `${lat.toFixed(4)},${lng.toFixed(4)}`;
+        const cache = this._reverseGeocodeCache;
+        if (cache.has(key)) return cache.get(key);
+        const url = 'https://nominatim.openstreetmap.org/reverse' +
+            `?lat=${encodeURIComponent(lat)}&lon=${encodeURIComponent(lng)}` +
+            '&format=json&zoom=18&accept-language=ja';
+        const request = fetch(url, {headers: {Accept: 'application/json'}})
+            .then(response => response.json())
+            .then(data => {
+                if (!data || typeof data !== 'object' || data.error || !data.address) {
+                    return null;
+                }
+                return data.address;
+            })
+            .catch(() => {
+                // Do not remember transient failures (network, rate limit).
+                cache.delete(key);
+                return null;
+            });
+        if (cache.size >= REVERSE_GEOCODE_CACHE_SIZE) {
+            cache.delete(cache.keys().next().value);
+        }
+        cache.set(key, request);
+        return request;
+    }
+
+    /**
+     * Build a readable address from a Nominatim address object.
+     * Japanese addresses are joined without separators from the largest area
+     * down (東京都千代田区丸の内一丁目); others are joined with ", ".
+     * A part is dropped when a later, more specific part starts with it
+     * (丸の内 / 丸の内一丁目) or repeats it. The hamlet (字) is skipped when a
+     * neighbourhood (丁目) is present, since Nominatim then reports a nearby
+     * named area rather than part of the address. A missing Japanese
+     * prefecture is filled in from the ISO 3166-2 code.
+     * @param {object} address - Nominatim "address" object.
+     * @returns {string} - the address, or '' when nothing usable.
+     */
+    _formatAddress (address) {
+        if (!address) return '';
+        const isJapan = address.country_code === 'jp';
+        const keys = ADDRESS_PARTS.filter(key => !(key === 'hamlet' && address.neighbourhood));
+        const parts = keys
+            .map(key => (typeof address[key] === 'string' ? address[key].trim() : ''))
+            .filter(part => part !== '');
+        if (isJapan && !address.province && !address.state) {
+            const code = /^JP-(\d{2})$/.exec(address['ISO3166-2-lvl4'] || '');
+            const prefecture = code ? JP_PREFECTURES[Number(code[1]) - 1] : null;
+            if (prefecture) parts.unshift(prefecture);
+        }
+        const kept = parts.filter((part, i) =>
+            !parts.slice(i + 1).some(later => later.startsWith(part)));
+        return kept.join(isJapan ? '' : ', ');
+    }
+
+    /**
+     * Address of a point (reverse geocoding via Nominatim).
+     * @param {object} args - block arguments.
+     * @returns {Promise<string>} - address, or '' when unavailable.
+     */
+    addressAt (args) {
+        return this._reverseGeocode(Cast.toNumber(args.LAT), Cast.toNumber(args.LNG))
+            .then(address => this._formatAddress(address));
+    }
+
+    /**
+     * Postal code of a point (reverse geocoding via Nominatim).
+     * @param {object} args - block arguments.
+     * @returns {Promise<string>} - postal code, or '' when unavailable.
+     */
+    postcodeAt (args) {
+        return this._reverseGeocode(Cast.toNumber(args.LAT), Cast.toNumber(args.LNG))
+            .then(address => ((address && typeof address.postcode === 'string') ? address.postcode : ''));
     }
 
     setMapType (args) {
