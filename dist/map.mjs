@@ -750,6 +750,8 @@ var en = {
 	"map.pinDistance": "distance from pin [FROM] to pin [TO] (km)",
 	"map.mapLat": "center latitude",
 	"map.mapLng": "center longitude",
+	"map.currentLat": "current latitude",
+	"map.currentLng": "current longitude",
 	"map.showCurrentLocation": "show map of current location",
 	"map.distance": "distance from latitude [LAT1] longitude [LNG1] to latitude [LAT2] longitude [LNG2] (km)",
 	"map.color.red": "red",
@@ -789,6 +791,8 @@ var ja = {
 	"map.pinDistance": "ピン番号 [FROM] からピン番号 [TO] までの距離(km)",
 	"map.mapLat": "中心の緯度",
 	"map.mapLng": "中心の経度",
+	"map.currentLat": "現在位置の緯度",
+	"map.currentLng": "現在位置の経度",
 	"map.showCurrentLocation": "現在位置の地図を表示する",
 	"map.distance": "緯度 [LAT1] 経度 [LNG1] から 緯度 [LAT2] 経度 [LNG2] までの距離(km)",
 	"map.color.red": "赤",
@@ -831,6 +835,8 @@ var translations = {
 	"map.pinDistance": "ピンばんごう [FROM] からピンばんごう [TO] までのきょり(km)",
 	"map.mapLat": "ちゅうしんのいど",
 	"map.mapLng": "ちゅうしんのけいど",
+	"map.currentLat": "げんざいちのいど",
+	"map.currentLng": "げんざいちのけいど",
 	"map.showCurrentLocation": "げんざいちのちずをひょうじする",
 	"map.distance": "いど [LAT1] けいど [LNG1] から いど [LAT2] けいど [LNG2] までのきょり(km)",
 	"map.color.red": "あか",
@@ -917,6 +923,19 @@ var DEFAULT_TILE_TYPE = 'osm';
  * @type {number}
  */
 var MERCATOR_MAX_LAT = 85.05112878;
+
+/**
+ * How long (ms) a device position from the Geolocation API is reused by the
+ * "current latitude/longitude" reporters before asking the device again.
+ * @type {number}
+ */
+var CURRENT_LOCATION_CACHE_MS = 5000;
+
+/**
+ * Geolocation request timeout in milliseconds.
+ * @type {number}
+ */
+var GEOLOCATION_TIMEOUT_MS = 10000;
 var MIN_ZOOM = 0;
 
 /**
@@ -967,6 +986,13 @@ var ExtensionBlocks = /*#__PURE__*/function () {
 
     // Token to discard results from out-of-date redraws.
     this._redrawToken = 0;
+
+    // Last device position from the Geolocation API:
+    // {lat, lng, time} on success, {lat: null, lng: null, time} on failure.
+    this._currentLocation = null;
+
+    // In-flight geolocation request, shared by concurrent callers.
+    this._currentLocationRequest = null;
   }
 
   /**
@@ -1253,6 +1279,22 @@ var ExtensionBlocks = /*#__PURE__*/function () {
             id: 'map.mapLng',
             default: '中心の経度',
             description: 'longitude of the map center'
+          })
+        }, {
+          opcode: 'currentLat',
+          blockType: BlockType.REPORTER,
+          text: formatMessage({
+            id: 'map.currentLat',
+            default: '現在位置の緯度',
+            description: 'latitude of the device location'
+          })
+        }, {
+          opcode: 'currentLng',
+          blockType: BlockType.REPORTER,
+          text: formatMessage({
+            id: 'map.currentLng',
+            default: '現在位置の経度',
+            description: 'longitude of the device location'
           })
         }, {
           opcode: 'pinDistance',
@@ -2285,28 +2327,98 @@ var ExtensionBlocks = /*#__PURE__*/function () {
     // ---- Blocks: current location / distance ----
 
     /**
+     * Get the device's position from the Geolocation API.
+     * Concurrent callers share one request, and a result (success or failure)
+     * is reused while it is younger than maxAgeMs.
+     * @param {number} maxAgeMs - accept a cached result up to this age (0 = always ask).
+     * @returns {Promise<{lat: number, lng: number}|null>} - position, or null on failure.
+     */
+  }, {
+    key: "_getCurrentLocation",
+    value: function _getCurrentLocation(maxAgeMs) {
+      var _this5 = this;
+      var cached = this._currentLocation;
+      if (cached && Date.now() - cached.time < maxAgeMs) {
+        return Promise.resolve(cached.lat === null ? null : {
+          lat: cached.lat,
+          lng: cached.lng
+        });
+      }
+      if (this._currentLocationRequest) {
+        return this._currentLocationRequest;
+      }
+      if (typeof navigator === 'undefined' || !navigator.geolocation) {
+        return Promise.resolve(null);
+      }
+      this._currentLocationRequest = new Promise(function (resolve) {
+        navigator.geolocation.getCurrentPosition(function (position) {
+          var lat = position.coords.latitude;
+          var lng = position.coords.longitude;
+          _this5._currentLocation = {
+            lat: lat,
+            lng: lng,
+            time: Date.now()
+          };
+          resolve({
+            lat: lat,
+            lng: lng
+          });
+        }, function () {
+          _this5._currentLocation = {
+            lat: null,
+            lng: null,
+            time: Date.now()
+          };
+          resolve(null);
+        }, {
+          enableHighAccuracy: true,
+          timeout: GEOLOCATION_TIMEOUT_MS,
+          maximumAge: 0
+        });
+      }).then(function (result) {
+        _this5._currentLocationRequest = null;
+        return result;
+      });
+      return this._currentLocationRequest;
+    }
+
+    /**
      * Get the device's current location and center the map on it.
-     * @returns {Promise|undefined} - resolves when the map has been redrawn.
+     * @returns {Promise} - resolves when the map has been redrawn.
      */
   }, {
     key: "showCurrentLocation",
     value: function showCurrentLocation() {
-      var _this5 = this;
-      if (typeof navigator === 'undefined' || !navigator.geolocation) {
-        return;
-      }
-      return new Promise(function (resolve) {
-        navigator.geolocation.getCurrentPosition(function (position) {
-          _this5.centerLat = position.coords.latitude;
-          _this5.centerLng = position.coords.longitude;
-          Promise.resolve(_this5._redraw()).then(resolve);
-        }, function () {
-          return resolve();
-        }, {
-          enableHighAccuracy: true,
-          timeout: 10000,
-          maximumAge: 0
-        });
+      var _this6 = this;
+      return this._getCurrentLocation(0).then(function (location) {
+        if (!location) return;
+        _this6.centerLat = location.lat;
+        _this6.centerLng = location.lng;
+        return _this6._redraw();
+      });
+    }
+
+    /**
+     * Latitude of the device's current location (no map display needed).
+     * @returns {Promise<number|string>} - latitude, or '' when unavailable.
+     */
+  }, {
+    key: "currentLat",
+    value: function currentLat() {
+      return this._getCurrentLocation(CURRENT_LOCATION_CACHE_MS).then(function (location) {
+        return location ? location.lat : '';
+      });
+    }
+
+    /**
+     * Longitude of the device's current location (no map display needed).
+     * @returns {Promise<number|string>} - longitude, or '' when unavailable.
+     */
+  }, {
+    key: "currentLng",
+    value: function currentLng() {
+      return this._getCurrentLocation(CURRENT_LOCATION_CACHE_MS).then(function (location) {
+        return location ? location.lng : '';
       });
     }
 
@@ -2424,7 +2536,7 @@ var ExtensionBlocks = /*#__PURE__*/function () {
   }, {
     key: "scrollBetweenPins",
     value: function scrollBetweenPins(args) {
-      var _this6 = this;
+      var _this7 = this;
       var from = this._points[Cast.toNumber(args.FROM) - 1];
       var to = this._points[Cast.toNumber(args.TO) - 1];
       if (!from || !to) {
@@ -2439,16 +2551,16 @@ var ExtensionBlocks = /*#__PURE__*/function () {
       var delayMs = 24;
       var frame = function frame(t) {
         var p = path(t);
-        _this6.centerLng = _this6._worldXToLng(p.x, startZoom);
-        _this6.centerLat = _this6._worldYToLat(p.y, startZoom);
+        _this7.centerLng = _this7._worldXToLng(p.x, startZoom);
+        _this7.centerLat = _this7._worldYToLat(p.y, startZoom);
         // w = STAGE_WIDTH * 2^(startZoom - z)  ->  z = startZoom - log2(w/STAGE_WIDTH)
         var z = startZoom - Math.log(p.w / STAGE_WIDTH) / Math.LN2;
-        return Promise.resolve(_this6._redraw(Math.max(MIN_ZOOM, Math.min(maxZoom, z))));
+        return Promise.resolve(_this7._redraw(Math.max(MIN_ZOOM, Math.min(maxZoom, z))));
       };
       var _animate2 = function animate(i) {
         return frame(i / steps).then(function () {
           if (i >= steps) {
-            _this6.zoom = startZoom;
+            _this7.zoom = startZoom;
             return;
           }
           return new Promise(function (resolve) {

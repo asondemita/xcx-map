@@ -394,6 +394,89 @@ describe("blockClass", () => {
         expect(() => block.showCurrentLocation()).not.toThrow();
     });
 
+    describe("current location reporters", () => {
+        // Install a fake Geolocation API that answers with the given position
+        // (or fails when position is null) and counts how often it was asked.
+        const installGeolocation = position => {
+            const calls = { count: 0 };
+            global.navigator = {
+                geolocation: {
+                    getCurrentPosition: (onSuccess, onError) => {
+                        calls.count += 1;
+                        if (position) {
+                            onSuccess({ coords: { latitude: position.lat, longitude: position.lng } });
+                        } else {
+                            onError(new Error("denied"));
+                        }
+                    }
+                }
+            };
+            return calls;
+        };
+
+        afterEach(() => {
+            delete global.navigator;
+        });
+
+        test("currentLat/currentLng return '' without geolocation", async () => {
+            const block = new blockClass(runtime);
+            expect(await block.currentLat()).toBe("");
+            expect(await block.currentLng()).toBe("");
+        });
+
+        test("currentLat/currentLng return the device position without touching the map", async () => {
+            installGeolocation({ lat: 34.702485, lng: 135.495951 });
+            const block = new blockClass(runtime);
+            expect(await block.currentLat()).toBeCloseTo(34.702485, 6);
+            expect(await block.currentLng()).toBeCloseTo(135.495951, 6);
+            // The map center stays at the default and no skin was created.
+            expect(block.centerLat).toBeCloseTo(35.681236, 5);
+            expect(block.centerLng).toBeCloseTo(139.767125, 5);
+            expect(block._skinId).toBeNull();
+        });
+
+        test("currentLat/currentLng return '' when geolocation fails", async () => {
+            installGeolocation(null);
+            const block = new blockClass(runtime);
+            expect(await block.currentLat()).toBe("");
+            expect(await block.currentLng()).toBe("");
+        });
+
+        test("consecutive reads share one geolocation request", async () => {
+            const calls = installGeolocation({ lat: 34.702485, lng: 135.495951 });
+            const block = new blockClass(runtime);
+            const [lat, lng] = await Promise.all([block.currentLat(), block.currentLng()]);
+            expect(lat).toBeCloseTo(34.702485, 6);
+            expect(lng).toBeCloseTo(135.495951, 6);
+            expect(calls.count).toBe(1);
+            // A later read within the cache window is served from the cache.
+            await block.currentLat();
+            expect(calls.count).toBe(1);
+        });
+
+        test("cached position expires", async () => {
+            const calls = installGeolocation({ lat: 34.702485, lng: 135.495951 });
+            const block = new blockClass(runtime);
+            await block.currentLat();
+            expect(calls.count).toBe(1);
+            block._currentLocation.time -= 10000;
+            await block.currentLat();
+            expect(calls.count).toBe(2);
+        });
+
+        test("showCurrentLocation always asks the device and fills the cache", async () => {
+            const calls = installGeolocation({ lat: 34.702485, lng: 135.495951 });
+            const block = new blockClass(runtime);
+            await block.currentLat();
+            await block.showCurrentLocation();
+            expect(calls.count).toBe(2);
+            expect(block.centerLat).toBeCloseTo(34.702485, 6);
+            expect(block.centerLng).toBeCloseTo(135.495951, 6);
+            await block.currentLng();
+            expect(calls.count).toBe(2);
+        });
+    });
+
     test("_destinationPoint travels the right bearing and distance", () => {
         const block = new blockClass(runtime);
         const lat = 35.681236;

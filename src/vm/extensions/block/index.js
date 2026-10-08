@@ -74,6 +74,19 @@ const DEFAULT_TILE_TYPE = 'osm';
  */
 const MERCATOR_MAX_LAT = 85.05112878;
 
+/**
+ * How long (ms) a device position from the Geolocation API is reused by the
+ * "current latitude/longitude" reporters before asking the device again.
+ * @type {number}
+ */
+const CURRENT_LOCATION_CACHE_MS = 5000;
+
+/**
+ * Geolocation request timeout in milliseconds.
+ * @type {number}
+ */
+const GEOLOCATION_TIMEOUT_MS = 10000;
+
 const MIN_ZOOM = 0;
 
 /**
@@ -168,6 +181,13 @@ class ExtensionBlocks {
 
         // Token to discard results from out-of-date redraws.
         this._redrawToken = 0;
+
+        // Last device position from the Geolocation API:
+        // {lat, lng, time} on success, {lat: null, lng: null, time} on failure.
+        this._currentLocation = null;
+
+        // In-flight geolocation request, shared by concurrent callers.
+        this._currentLocationRequest = null;
     }
 
     /**
@@ -421,6 +441,24 @@ class ExtensionBlocks {
                         id: 'map.mapLng',
                         default: '中心の経度',
                         description: 'longitude of the map center'
+                    })
+                },
+                {
+                    opcode: 'currentLat',
+                    blockType: BlockType.REPORTER,
+                    text: formatMessage({
+                        id: 'map.currentLat',
+                        default: '現在位置の緯度',
+                        description: 'latitude of the device location'
+                    })
+                },
+                {
+                    opcode: 'currentLng',
+                    blockType: BlockType.REPORTER,
+                    text: formatMessage({
+                        id: 'map.currentLng',
+                        default: '現在位置の経度',
+                        description: 'longitude of the device location'
                     })
                 },
                 {
@@ -1270,24 +1308,73 @@ class ExtensionBlocks {
     // ---- Blocks: current location / distance ----
 
     /**
-     * Get the device's current location and center the map on it.
-     * @returns {Promise|undefined} - resolves when the map has been redrawn.
+     * Get the device's position from the Geolocation API.
+     * Concurrent callers share one request, and a result (success or failure)
+     * is reused while it is younger than maxAgeMs.
+     * @param {number} maxAgeMs - accept a cached result up to this age (0 = always ask).
+     * @returns {Promise<{lat: number, lng: number}|null>} - position, or null on failure.
      */
-    showCurrentLocation () {
-        if (typeof navigator === 'undefined' || !navigator.geolocation) {
-            return;
+    _getCurrentLocation (maxAgeMs) {
+        const cached = this._currentLocation;
+        if (cached && (Date.now() - cached.time) < maxAgeMs) {
+            return Promise.resolve(cached.lat === null ? null : {lat: cached.lat, lng: cached.lng});
         }
-        return new Promise(resolve => {
+        if (this._currentLocationRequest) {
+            return this._currentLocationRequest;
+        }
+        if (typeof navigator === 'undefined' || !navigator.geolocation) {
+            return Promise.resolve(null);
+        }
+        this._currentLocationRequest = new Promise(resolve => {
             navigator.geolocation.getCurrentPosition(
                 position => {
-                    this.centerLat = position.coords.latitude;
-                    this.centerLng = position.coords.longitude;
-                    Promise.resolve(this._redraw()).then(resolve);
+                    const lat = position.coords.latitude;
+                    const lng = position.coords.longitude;
+                    this._currentLocation = {lat, lng, time: Date.now()};
+                    resolve({lat, lng});
                 },
-                () => resolve(),
-                {enableHighAccuracy: true, timeout: 10000, maximumAge: 0}
+                () => {
+                    this._currentLocation = {lat: null, lng: null, time: Date.now()};
+                    resolve(null);
+                },
+                {enableHighAccuracy: true, timeout: GEOLOCATION_TIMEOUT_MS, maximumAge: 0}
             );
+        }).then(result => {
+            this._currentLocationRequest = null;
+            return result;
         });
+        return this._currentLocationRequest;
+    }
+
+    /**
+     * Get the device's current location and center the map on it.
+     * @returns {Promise} - resolves when the map has been redrawn.
+     */
+    showCurrentLocation () {
+        return this._getCurrentLocation(0).then(location => {
+            if (!location) return;
+            this.centerLat = location.lat;
+            this.centerLng = location.lng;
+            return this._redraw();
+        });
+    }
+
+    /**
+     * Latitude of the device's current location (no map display needed).
+     * @returns {Promise<number|string>} - latitude, or '' when unavailable.
+     */
+    currentLat () {
+        return this._getCurrentLocation(CURRENT_LOCATION_CACHE_MS)
+            .then(location => (location ? location.lat : ''));
+    }
+
+    /**
+     * Longitude of the device's current location (no map display needed).
+     * @returns {Promise<number|string>} - longitude, or '' when unavailable.
+     */
+    currentLng () {
+        return this._getCurrentLocation(CURRENT_LOCATION_CACHE_MS)
+            .then(location => (location ? location.lng : ''));
     }
 
     /**

@@ -4,7 +4,7 @@ module.exports = {
   extends: ["plugin:jest/recommended"],
   env: {
     browser: true,
-    es6: true,
+    es2017: true,
     "jest/globals": true,
   },
   parserOptions: {
