@@ -19,7 +19,7 @@ var translations$1 = {
 }
 };
 
-var version$1 = "1.5.0";
+var version$1 = "1.6.0";
 
 /**
  * This is an extension for Xcratch.
@@ -736,9 +736,10 @@ var en = {
 	"map.panVertical": "move map [PIXELS] pixels vertically",
 	"map.moveByDistance": "move [DISTANCE] m in direction [DEGREES] over [SECONDS] seconds on the map",
 	"map.setOpacity": "set map transparency to [OPACITY]",
-	"map.setCenterLines": "turn center lines [MODE]",
-	"map.centerLines.off": "off",
-	"map.centerLines.on": "on",
+	"map.setCenterLines": "set center mark to [MODE]",
+	"map.centerLines.off": "none",
+	"map.centerLines.cross": "cross",
+	"map.centerLines.on": "lines",
 	"map.addCenterPin": "drop a [COLOR] pin at the map center",
 	"map.plotData": "drop pins from data [DATA]",
 	"map.setLastPinName": "set the name of the last pin to [NAME]",
@@ -782,9 +783,10 @@ var ja = {
 	"map.panVertical": "地図を縦に [PIXELS] ピクセル移動する",
 	"map.moveByDistance": "地図上で [DEGREES] 度方向に [DISTANCE] m を [SECONDS] 秒で移動する",
 	"map.setOpacity": "地図の透明度を [OPACITY] にする",
-	"map.setCenterLines": "中心線を表示 [MODE]",
-	"map.centerLines.off": "しない",
-	"map.centerLines.on": "する",
+	"map.setCenterLines": "中心のしるしを [MODE] にする",
+	"map.centerLines.off": "なし",
+	"map.centerLines.cross": "十字",
+	"map.centerLines.on": "線",
 	"map.addCenterPin": "地図の中心に [COLOR] 色のピンを立てる",
 	"map.plotData": "データ [DATA] のピンを立てる",
 	"map.setLastPinName": "直前のピンの名前を [NAME] にする",
@@ -831,9 +833,10 @@ var translations = {
 	"map.panVertical": "ちずをたてに [PIXELS] ピクセルうごかす",
 	"map.moveByDistance": "ちずじょうで [DEGREES] どほうこうに [DISTANCE] m を [SECONDS] びょうでうごかす",
 	"map.setOpacity": "ちずのとうめいどを [OPACITY] にする",
-	"map.setCenterLines": "ちゅうしんせんをひょうじ [MODE]",
-	"map.centerLines.off": "しない",
-	"map.centerLines.on": "する",
+	"map.setCenterLines": "ちゅうしんのしるしを [MODE] にする",
+	"map.centerLines.off": "なし",
+	"map.centerLines.cross": "じゅうじ",
+	"map.centerLines.on": "せん",
 	"map.addCenterPin": "ちずのちゅうしんに [COLOR] いろのピンをたてる",
 	"map.plotData": "データ [DATA] のピンをたてる",
 	"map.setLastPinName": "ちょくぜんのピンのなまえを [NAME] にする",
@@ -1009,9 +1012,10 @@ var ExtensionBlocks = /*#__PURE__*/function () {
     // Whether pins show their order number (1, 2, 3, ...).
     this._pinNumbered = false;
 
-    // Whether the hairlines through the stage center (x = 0 and y = 0)
-    // are drawn. On by default so the center is visible without a pin.
-    this._centerLines = true;
+    // Mark drawn at the stage center (x = 0, y = 0) so it is visible
+    // without a pin: 'line' = hairlines across the stage (default),
+    // 'cross' = a small crosshair, 'off' = nothing.
+    this._centerMark = 'line';
 
     // Map layer transparency (ghost effect: 0 = opaque, 100 = invisible).
     this._opacity = 0;
@@ -1454,8 +1458,8 @@ var ExtensionBlocks = /*#__PURE__*/function () {
           blockType: BlockType.COMMAND,
           text: formatMessage({
             id: 'map.setCenterLines',
-            default: '中心線を表示 [MODE]',
-            description: 'show or hide the hairlines through the stage center'
+            default: '中心のしるしを [MODE] にする',
+            description: 'choose the mark drawn at the stage center (lines / cross / none)'
           }),
           arguments: {
             MODE: {
@@ -1510,7 +1514,9 @@ var ExtensionBlocks = /*#__PURE__*/function () {
     }
 
     /**
-     * @returns {Array} - items for the center lines menu (する / しない).
+     * @returns {Array} - items for the center mark menu (線 / 十字 / なし).
+     * The value 'on' (= lines) is kept for projects saved before the cross
+     * option existed.
      */
   }, {
     key: "getCenterLinesMenu",
@@ -1518,15 +1524,22 @@ var ExtensionBlocks = /*#__PURE__*/function () {
       return [{
         text: formatMessage({
           id: 'map.centerLines.on',
-          default: 'する',
-          description: 'show center lines'
+          default: '線',
+          description: 'hairlines across stage'
         }),
         value: 'on'
       }, {
         text: formatMessage({
+          id: 'map.centerLines.cross',
+          default: '十字',
+          description: 'small crosshair'
+        }),
+        value: 'cross'
+      }, {
+        text: formatMessage({
           id: 'map.centerLines.off',
-          default: 'しない',
-          description: 'hide center lines'
+          default: 'なし',
+          description: 'no center mark'
         }),
         value: 'off'
       }];
@@ -1751,17 +1764,27 @@ var ExtensionBlocks = /*#__PURE__*/function () {
      * @param {CanvasRenderingContext2D} ctx - drawing context.
      */
     /**
-     * Draw faint dotted gray hairlines along stage x = 0 and y = 0 so the
-     * map center is visible without a pin. Drawn over the pins and under the
-     * attribution label; skipped when turned off.
+     * Draw the center mark (see _centerMark) so the map center is visible
+     * without a pin. Drawn over the pins and under the attribution label.
+     * @param {CanvasRenderingContext2D} ctx - drawing context.
+     */
+  }, {
+    key: "_drawCenterMark",
+    value: function _drawCenterMark(ctx) {
+      if (this._centerMark === 'line') {
+        this._drawCenterLines(ctx);
+      } else if (this._centerMark === 'cross') {
+        this._drawCenterCross(ctx);
+      }
+    }
+
+    /**
+     * Faint dotted gray hairlines along stage x = 0 and y = 0.
      * @param {CanvasRenderingContext2D} ctx - drawing context.
      */
   }, {
     key: "_drawCenterLines",
     value: function _drawCenterLines(ctx) {
-      if (!this._centerLines) {
-        return;
-      }
       var cx = STAGE_WIDTH / 2;
       var cy = STAGE_HEIGHT / 2;
       ctx.save();
@@ -1774,6 +1797,43 @@ var ExtensionBlocks = /*#__PURE__*/function () {
       ctx.lineTo(cx + 0.5, STAGE_HEIGHT);
       ctx.moveTo(0, cy + 0.5);
       ctx.lineTo(STAGE_WIDTH, cy + 0.5);
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    /**
+     * Small gray crosshair at the stage center: four short arms with a gap in
+     * the middle (so the exact point stays visible) and a small circle,
+     * stroked twice (white halo, then gray) so it shows on any map.
+     * @param {CanvasRenderingContext2D} ctx - drawing context.
+     */
+  }, {
+    key: "_drawCenterCross",
+    value: function _drawCenterCross(ctx) {
+      var cx = STAGE_WIDTH / 2 + 0.5;
+      var cy = STAGE_HEIGHT / 2 + 0.5;
+      var arm = 12;
+      var gap = 3;
+      var radius = 4;
+      ctx.save();
+      ctx.setLineDash([]);
+      ctx.lineCap = 'round';
+      ctx.beginPath();
+      ctx.moveTo(cx, cy - arm);
+      ctx.lineTo(cx, cy - gap);
+      ctx.moveTo(cx, cy + gap);
+      ctx.lineTo(cx, cy + arm);
+      ctx.moveTo(cx - arm, cy);
+      ctx.lineTo(cx - gap, cy);
+      ctx.moveTo(cx + gap, cy);
+      ctx.lineTo(cx + arm, cy);
+      ctx.moveTo(cx + radius, cy);
+      ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.8)';
+      ctx.lineWidth = 3;
+      ctx.stroke();
+      ctx.strokeStyle = 'rgba(96, 96, 96, 0.9)';
+      ctx.lineWidth = 1;
       ctx.stroke();
       ctx.restore();
     }
@@ -1996,7 +2056,7 @@ var ExtensionBlocks = /*#__PURE__*/function () {
           _iterator.f();
         }
         _this._drawMarkers(ctx, zoom, left, top);
-        _this._drawCenterLines(ctx);
+        _this._drawCenterMark(ctx);
         _this._drawAttribution(ctx);
         _this.runtime.renderer.updateBitmapSkin(_this._skinId, _this._canvas, 1);
         _this.runtime.requestRedraw();
@@ -2411,10 +2471,17 @@ var ExtensionBlocks = /*#__PURE__*/function () {
       this._pinNumbered = Cast.toString(args.MODE) === 'on';
       return this._redraw();
     }
+
+    // 'on' (and anything unknown) = lines, for projects saved before 'cross' existed.
   }, {
     key: "setCenterLines",
     value: function setCenterLines(args) {
-      this._centerLines = Cast.toString(args.MODE) === 'on';
+      var mode = Cast.toString(args.MODE);
+      if (mode === 'cross' || mode === 'off') {
+        this._centerMark = mode;
+      } else {
+        this._centerMark = 'line';
+      }
       return this._redraw();
     }
   }, {
