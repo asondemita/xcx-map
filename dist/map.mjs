@@ -19,7 +19,7 @@ var translations$1 = {
 }
 };
 
-var version$1 = "1.3.0";
+var version$1 = "1.4.0";
 
 /**
  * This is an extension for Xcratch.
@@ -1943,9 +1943,15 @@ var ExtensionBlocks = /*#__PURE__*/function () {
     }
 
     /**
-     * Geocode a free keyword with OpenStreetMap Nominatim and show its map,
-     * fitting the result's bounding box. Subject to the Nominatim usage
-     * policy (max ~1 request/second, no bulk use).
+     * Geocode a free keyword and show its map.
+     * Place names (施設名・駅名) are resolved with OpenStreetMap Nominatim,
+     * fitting the result's bounding box. Nominatim cannot resolve most
+     * Japanese street addresses (番地付き住所), so when it returns nothing
+     * the keyword is retried against the GSI address search API
+     * (国土地理院 住所検索), which is strong on addresses but weak on place
+     * names; that is why it is only consulted as a fallback.
+     * Both services are subject to usage policies (max ~1 request/second,
+     * no bulk use).
      * @param {object} args - block arguments.
      * @returns {Promise|undefined} - resolves when the map has been redrawn.
      */
@@ -1957,6 +1963,36 @@ var ExtensionBlocks = /*#__PURE__*/function () {
       if (keyword === '' || typeof fetch === 'undefined') {
         return;
       }
+      return this._geocodeNominatim(keyword).then(function (result) {
+        if (result) {
+          return result;
+        }
+        return _this2._geocodeGsiAddress(keyword);
+      }).then(function (result) {
+        if (!result) {
+          return;
+        }
+        var box = result.boundingbox; // [south, north, west, east]
+        if (box && box.length === 4) {
+          _this2._fitToBounds(Number(box[0]), Number(box[1]), Number(box[2]), Number(box[3]));
+        } else {
+          _this2.centerLat = result.lat;
+          _this2.centerLng = result.lng;
+          _this2.zoom = _this2._clampZoom(result.zoom);
+        }
+        return _this2._redraw();
+      }).catch(function () {});
+    }
+
+    /**
+     * Look a keyword up with OpenStreetMap Nominatim.
+     * @param {string} keyword - place name or address.
+     * @returns {Promise<{lat: number, lng: number, zoom: number, boundingbox: ?Array}|null>}
+     *   best match, or null when nothing was found or the request failed.
+     */
+  }, {
+    key: "_geocodeNominatim",
+    value: function _geocodeNominatim(keyword) {
       var url = 'https://nominatim.openstreetmap.org/search' + "?q=".concat(encodeURIComponent(keyword), "&format=json&limit=1&accept-language=ja");
       return fetch(url, {
         headers: {
@@ -1966,19 +2002,66 @@ var ExtensionBlocks = /*#__PURE__*/function () {
         return response.json();
       }).then(function (data) {
         if (!Array.isArray(data) || data.length === 0) {
-          return;
+          return null;
         }
         var result = data[0];
-        var box = result.boundingbox; // [south, north, west, east]
-        if (box && box.length === 4) {
-          _this2._fitToBounds(Number(box[0]), Number(box[1]), Number(box[2]), Number(box[3]));
-        } else {
-          _this2.centerLat = Number(result.lat);
-          _this2.centerLng = Number(result.lon);
-          _this2.zoom = _this2._clampZoom(15);
+        var lat = Number(result.lat);
+        var lng = Number(result.lon);
+        if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+          return null;
         }
-        return _this2._redraw();
-      }).catch(function () {});
+        return {
+          lat: lat,
+          lng: lng,
+          zoom: 15,
+          boundingbox: result.boundingbox
+        };
+      }).catch(function () {
+        return null;
+      });
+    }
+
+    /**
+     * Look an address up with the GSI address search API (国土地理院 住所検索).
+     * The API answers with a GeoJSON feature list; the first feature is the
+     * best match. It resolves down to the block (番) level, so there is no
+     * bounding box and the map is shown at a fixed street-level zoom.
+     * @param {string} keyword - address such as 東京都港区芝公園4-2-8.
+     * @returns {Promise<{lat: number, lng: number, zoom: number, boundingbox: null}|null>}
+     *   best match, or null when nothing was found or the request failed.
+     */
+  }, {
+    key: "_geocodeGsiAddress",
+    value: function _geocodeGsiAddress(keyword) {
+      var url = 'https://msearch.gsi.go.jp/address-search/AddressSearch' + "?q=".concat(encodeURIComponent(keyword));
+      return fetch(url, {
+        headers: {
+          Accept: 'application/json'
+        }
+      }).then(function (response) {
+        return response.json();
+      }).then(function (data) {
+        if (!Array.isArray(data) || data.length === 0) {
+          return null;
+        }
+        var coords = data[0].geometry && data[0].geometry.coordinates; // [lng, lat]
+        if (!Array.isArray(coords) || coords.length < 2) {
+          return null;
+        }
+        var lng = Number(coords[0]);
+        var lat = Number(coords[1]);
+        if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+          return null;
+        }
+        return {
+          lat: lat,
+          lng: lng,
+          zoom: 16,
+          boundingbox: null
+        };
+      }).catch(function () {
+        return null;
+      });
     }
 
     /**
