@@ -246,6 +246,46 @@ describe("blockClass", () => {
         expect(texts).toContain("1");
     });
 
+    test("center lines are drawn through the stage center by default, hidden when off", () => {
+        const block = new blockClass(runtime);
+        const makeCtx = () => {
+            const calls = { moveTo: [], lineTo: [], stroke: 0, dash: null };
+            const ctx = new Proxy({}, {
+                get: (_t, prop) => {
+                    if (prop === "moveTo") return (x, y) => calls.moveTo.push([x, y]);
+                    if (prop === "lineTo") return (x, y) => calls.lineTo.push([x, y]);
+                    if (prop === "stroke") return () => { calls.stroke += 1; };
+                    if (prop === "setLineDash") return d => { calls.dash = d; };
+                    return () => {};
+                },
+                set: () => true
+            });
+            return { ctx, calls };
+        };
+        expect(block._centerLines).toBe(true);
+        const on = makeCtx();
+        block._drawCenterLines(on.ctx);
+        expect(on.calls.stroke).toBe(1);
+        // vertical line at stage x = 0 (canvas x = 240), horizontal at y = 0 (canvas y = 180)
+        expect(on.calls.moveTo).toEqual([[240.5, 0], [0, 180.5]]);
+        expect(on.calls.lineTo).toEqual([[240.5, 360], [480, 180.5]]);
+        expect(on.calls.dash).toEqual([3, 3]);
+
+        block.setCenterLines({ MODE: "off" });
+        expect(block._centerLines).toBe(false);
+        const off = makeCtx();
+        block._drawCenterLines(off.ctx);
+        expect(off.calls.stroke).toBe(0);
+
+        block.setCenterLines({ MODE: "on" });
+        expect(block._centerLines).toBe(true);
+    });
+
+    test("center lines menu lists on then off", () => {
+        const block = new blockClass(runtime);
+        expect(block.getCenterLinesMenu().map(i => i.value)).toEqual(["on", "off"]);
+    });
+
     test("pin number menu lists on then off, default off", () => {
         const block = new blockClass(runtime);
         const values = block.getPinNumberMenu().map(i => i.value);

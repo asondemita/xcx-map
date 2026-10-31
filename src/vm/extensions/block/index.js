@@ -200,6 +200,10 @@ class ExtensionBlocks {
         // Whether pins show their order number (1, 2, 3, ...).
         this._pinNumbered = false;
 
+        // Whether the hairlines through the stage center (x = 0 and y = 0)
+        // are drawn. On by default so the center is visible without a pin.
+        this._centerLines = true;
+
         // Map layer transparency (ghost effect: 0 = opaque, 100 = invisible).
         this._opacity = 0;
 
@@ -579,6 +583,22 @@ class ExtensionBlocks {
                     arguments: {
                         OPACITY: {type: ArgumentType.NUMBER, defaultValue: 50}
                     }
+                },
+                {
+                    opcode: 'setCenterLines',
+                    blockType: BlockType.COMMAND,
+                    text: formatMessage({
+                        id: 'map.setCenterLines',
+                        default: '中心線を表示 [MODE]',
+                        description: 'show or hide the hairlines through the stage center'
+                    }),
+                    arguments: {
+                        MODE: {
+                            type: ArgumentType.STRING,
+                            menu: 'centerLinesMenu',
+                            defaultValue: 'off'
+                        }
+                    }
                 }
             ],
             menus: {
@@ -593,6 +613,10 @@ class ExtensionBlocks {
                 pinNumberMenu: {
                     acceptReporters: false,
                     items: 'getPinNumberMenu'
+                },
+                centerLinesMenu: {
+                    acceptReporters: false,
+                    items: 'getCenterLinesMenu'
                 }
             }
         };
@@ -609,6 +633,22 @@ class ExtensionBlocks {
             },
             {
                 text: formatMessage({id: 'map.pinNumber.off', default: 'しない', description: 'hide pin numbers'}),
+                value: 'off'
+            }
+        ];
+    }
+
+    /**
+     * @returns {Array} - items for the center lines menu (する / しない).
+     */
+    getCenterLinesMenu () {
+        return [
+            {
+                text: formatMessage({id: 'map.centerLines.on', default: 'する', description: 'show center lines'}),
+                value: 'on'
+            },
+            {
+                text: formatMessage({id: 'map.centerLines.off', default: 'しない', description: 'hide center lines'}),
                 value: 'off'
             }
         ];
@@ -770,6 +810,32 @@ class ExtensionBlocks {
      * Draw the attribution required by the current tile source's policy.
      * @param {CanvasRenderingContext2D} ctx - drawing context.
      */
+    /**
+     * Draw faint dotted gray hairlines along stage x = 0 and y = 0 so the
+     * map center is visible without a pin. Drawn over the pins and under the
+     * attribution label; skipped when turned off.
+     * @param {CanvasRenderingContext2D} ctx - drawing context.
+     */
+    _drawCenterLines (ctx) {
+        if (!this._centerLines) {
+            return;
+        }
+        const cx = STAGE_WIDTH / 2;
+        const cy = STAGE_HEIGHT / 2;
+        ctx.save();
+        ctx.strokeStyle = 'rgba(96, 96, 96, 0.7)';
+        ctx.lineWidth = 1;
+        ctx.setLineDash([3, 3]);
+        ctx.beginPath();
+        // +0.5 keeps the 1px line on a single pixel column/row (no blur).
+        ctx.moveTo(cx + 0.5, 0);
+        ctx.lineTo(cx + 0.5, STAGE_HEIGHT);
+        ctx.moveTo(0, cy + 0.5);
+        ctx.lineTo(STAGE_WIDTH, cy + 0.5);
+        ctx.stroke();
+        ctx.restore();
+    }
+
     _drawAttribution (ctx) {
         const label = this._tileConfig().attribution;
         ctx.font = '10px sans-serif';
@@ -962,6 +1028,7 @@ class ExtensionBlocks {
                 }
             }
             this._drawMarkers(ctx, zoom, left, top);
+            this._drawCenterLines(ctx);
             this._drawAttribution(ctx);
             this.runtime.renderer.updateBitmapSkin(this._skinId, this._canvas, 1);
             this.runtime.requestRedraw();
@@ -1316,6 +1383,11 @@ class ExtensionBlocks {
 
     setPinNumber (args) {
         this._pinNumbered = Cast.toString(args.MODE) === 'on';
+        return this._redraw();
+    }
+
+    setCenterLines (args) {
+        this._centerLines = Cast.toString(args.MODE) === 'on';
         return this._redraw();
     }
 
