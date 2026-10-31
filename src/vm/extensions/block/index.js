@@ -201,9 +201,9 @@ class ExtensionBlocks {
         this._pinNumbered = false;
 
         // Mark drawn at the stage center (x = 0, y = 0) so it is visible
-        // without a pin: 'line' = hairlines across the stage (default),
-        // 'cross' = a small crosshair, 'off' = nothing.
-        this._centerMark = 'line';
+        // without a pin: 'cross' = a small crosshair (default),
+        // 'line' = hairlines across the stage, 'off' = nothing.
+        this._centerMark = 'cross';
 
         // Map layer transparency (ghost effect: 0 = opaque, 100 = invisible).
         this._opacity = 0;

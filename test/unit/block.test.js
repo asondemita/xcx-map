@@ -263,8 +263,9 @@ describe("blockClass", () => {
             return { ctx, calls };
         };
 
-        test("dotted hairlines through the stage center by default", () => {
+        test("lines: dotted hairlines through the stage center", () => {
             const block = new blockClass(runtime);
+            block.setCenterLines({ MODE: "on" });
             expect(block._centerMark).toBe("line");
             const { ctx, calls } = makeCtx();
             block._drawCenterMark(ctx);
@@ -275,9 +276,8 @@ describe("blockClass", () => {
             expect(calls.dash).toEqual([3, 3]);
         });
 
-        test("cross: four short arms with a gap plus a circle, halo then gray", () => {
+        test("cross (default): four short arms with a gap plus a circle, halo then gray", () => {
             const block = new blockClass(runtime);
-            block.setCenterLines({ MODE: "cross" });
             expect(block._centerMark).toBe("cross");
             const { ctx, calls } = makeCtx();
             block._drawCenterMark(ctx);
