@@ -200,9 +200,10 @@ class ExtensionBlocks {
         // Whether pins show their order number (1, 2, 3, ...).
         this._pinNumbered = false;
 
-        // Whether the hairlines through the stage center (x = 0 and y = 0)
-        // are drawn. On by default so the center is visible without a pin.
-        this._centerLines = true;
+        // Mark drawn at the stage center (x = 0, y = 0) so it is visible
+        // without a pin: 'line' = hairlines across the stage (default),
+        // 'cross' = a small crosshair, 'off' = nothing.
+        this._centerMark = 'line';
 
         // Map layer transparency (ghost effect: 0 = opaque, 100 = invisible).
         this._opacity = 0;
@@ -589,8 +590,8 @@ class ExtensionBlocks {
                     blockType: BlockType.COMMAND,
                     text: formatMessage({
                         id: 'map.setCenterLines',
-                        default: '中心線を表示 [MODE]',
-                        description: 'show or hide the hairlines through the stage center'
+                        default: '中心のしるしを [MODE] にする',
+                        description: 'choose the mark drawn at the stage center (lines / cross / none)'
                     }),
                     arguments: {
                         MODE: {
@@ -639,16 +640,22 @@ class ExtensionBlocks {
     }
 
     /**
-     * @returns {Array} - items for the center lines menu (する / しない).
+     * @returns {Array} - items for the center mark menu (線 / 十字 / なし).
+     * The value 'on' (= lines) is kept for projects saved before the cross
+     * option existed.
      */
     getCenterLinesMenu () {
         return [
             {
-                text: formatMessage({id: 'map.centerLines.on', default: 'する', description: 'show center lines'}),
+                text: formatMessage({id: 'map.centerLines.on', default: '線', description: 'hairlines across stage'}),
                 value: 'on'
             },
             {
-                text: formatMessage({id: 'map.centerLines.off', default: 'しない', description: 'hide center lines'}),
+                text: formatMessage({id: 'map.centerLines.cross', default: '十字', description: 'small crosshair'}),
+                value: 'cross'
+            },
+            {
+                text: formatMessage({id: 'map.centerLines.off', default: 'なし', description: 'no center mark'}),
                 value: 'off'
             }
         ];
@@ -811,15 +818,23 @@ class ExtensionBlocks {
      * @param {CanvasRenderingContext2D} ctx - drawing context.
      */
     /**
-     * Draw faint dotted gray hairlines along stage x = 0 and y = 0 so the
-     * map center is visible without a pin. Drawn over the pins and under the
-     * attribution label; skipped when turned off.
+     * Draw the center mark (see _centerMark) so the map center is visible
+     * without a pin. Drawn over the pins and under the attribution label.
+     * @param {CanvasRenderingContext2D} ctx - drawing context.
+     */
+    _drawCenterMark (ctx) {
+        if (this._centerMark === 'line') {
+            this._drawCenterLines(ctx);
+        } else if (this._centerMark === 'cross') {
+            this._drawCenterCross(ctx);
+        }
+    }
+
+    /**
+     * Faint dotted gray hairlines along stage x = 0 and y = 0.
      * @param {CanvasRenderingContext2D} ctx - drawing context.
      */
     _drawCenterLines (ctx) {
-        if (!this._centerLines) {
-            return;
-        }
         const cx = STAGE_WIDTH / 2;
         const cy = STAGE_HEIGHT / 2;
         ctx.save();
@@ -832,6 +847,41 @@ class ExtensionBlocks {
         ctx.lineTo(cx + 0.5, STAGE_HEIGHT);
         ctx.moveTo(0, cy + 0.5);
         ctx.lineTo(STAGE_WIDTH, cy + 0.5);
+        ctx.stroke();
+        ctx.restore();
+    }
+
+    /**
+     * Small gray crosshair at the stage center: four short arms with a gap in
+     * the middle (so the exact point stays visible) and a small circle,
+     * stroked twice (white halo, then gray) so it shows on any map.
+     * @param {CanvasRenderingContext2D} ctx - drawing context.
+     */
+    _drawCenterCross (ctx) {
+        const cx = (STAGE_WIDTH / 2) + 0.5;
+        const cy = (STAGE_HEIGHT / 2) + 0.5;
+        const arm = 12;
+        const gap = 3;
+        const radius = 4;
+        ctx.save();
+        ctx.setLineDash([]);
+        ctx.lineCap = 'round';
+        ctx.beginPath();
+        ctx.moveTo(cx, cy - arm);
+        ctx.lineTo(cx, cy - gap);
+        ctx.moveTo(cx, cy + gap);
+        ctx.lineTo(cx, cy + arm);
+        ctx.moveTo(cx - arm, cy);
+        ctx.lineTo(cx - gap, cy);
+        ctx.moveTo(cx + gap, cy);
+        ctx.lineTo(cx + arm, cy);
+        ctx.moveTo(cx + radius, cy);
+        ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.8)';
+        ctx.lineWidth = 3;
+        ctx.stroke();
+        ctx.strokeStyle = 'rgba(96, 96, 96, 0.9)';
+        ctx.lineWidth = 1;
         ctx.stroke();
         ctx.restore();
     }
@@ -1028,7 +1078,7 @@ class ExtensionBlocks {
                 }
             }
             this._drawMarkers(ctx, zoom, left, top);
-            this._drawCenterLines(ctx);
+            this._drawCenterMark(ctx);
             this._drawAttribution(ctx);
             this.runtime.renderer.updateBitmapSkin(this._skinId, this._canvas, 1);
             this.runtime.requestRedraw();
@@ -1386,8 +1436,14 @@ class ExtensionBlocks {
         return this._redraw();
     }
 
+    // 'on' (and anything unknown) = lines, for projects saved before 'cross' existed.
     setCenterLines (args) {
-        this._centerLines = Cast.toString(args.MODE) === 'on';
+        const mode = Cast.toString(args.MODE);
+        if (mode === 'cross' || mode === 'off') {
+            this._centerMark = mode;
+        } else {
+            this._centerMark = 'line';
+        }
         return this._redraw();
     }
 
