@@ -19,7 +19,7 @@ var translations$1 = {
 }
 };
 
-var version$1 = "1.4.0";
+var version$1 = "1.5.0";
 
 /**
  * This is an extension for Xcratch.
@@ -736,6 +736,9 @@ var en = {
 	"map.panVertical": "move map [PIXELS] pixels vertically",
 	"map.moveByDistance": "move [DISTANCE] m in direction [DEGREES] over [SECONDS] seconds on the map",
 	"map.setOpacity": "set map transparency to [OPACITY]",
+	"map.setCenterLines": "turn center lines [MODE]",
+	"map.centerLines.off": "off",
+	"map.centerLines.on": "on",
 	"map.addCenterPin": "drop a [COLOR] pin at the map center",
 	"map.plotData": "drop pins from data [DATA]",
 	"map.setLastPinName": "set the name of the last pin to [NAME]",
@@ -779,6 +782,9 @@ var ja = {
 	"map.panVertical": "地図を縦に [PIXELS] ピクセル移動する",
 	"map.moveByDistance": "地図上で [DEGREES] 度方向に [DISTANCE] m を [SECONDS] 秒で移動する",
 	"map.setOpacity": "地図の透明度を [OPACITY] にする",
+	"map.setCenterLines": "中心線を表示 [MODE]",
+	"map.centerLines.off": "しない",
+	"map.centerLines.on": "する",
 	"map.addCenterPin": "地図の中心に [COLOR] 色のピンを立てる",
 	"map.plotData": "データ [DATA] のピンを立てる",
 	"map.setLastPinName": "直前のピンの名前を [NAME] にする",
@@ -825,6 +831,9 @@ var translations = {
 	"map.panVertical": "ちずをたてに [PIXELS] ピクセルうごかす",
 	"map.moveByDistance": "ちずじょうで [DEGREES] どほうこうに [DISTANCE] m を [SECONDS] びょうでうごかす",
 	"map.setOpacity": "ちずのとうめいどを [OPACITY] にする",
+	"map.setCenterLines": "ちゅうしんせんをひょうじ [MODE]",
+	"map.centerLines.off": "しない",
+	"map.centerLines.on": "する",
 	"map.addCenterPin": "ちずのちゅうしんに [COLOR] いろのピンをたてる",
 	"map.plotData": "データ [DATA] のピンをたてる",
 	"map.setLastPinName": "ちょくぜんのピンのなまえを [NAME] にする",
@@ -999,6 +1008,10 @@ var ExtensionBlocks = /*#__PURE__*/function () {
 
     // Whether pins show their order number (1, 2, 3, ...).
     this._pinNumbered = false;
+
+    // Whether the hairlines through the stage center (x = 0 and y = 0)
+    // are drawn. On by default so the center is visible without a pin.
+    this._centerLines = true;
 
     // Map layer transparency (ghost effect: 0 = opaque, 100 = invisible).
     this._opacity = 0;
@@ -1436,6 +1449,21 @@ var ExtensionBlocks = /*#__PURE__*/function () {
               defaultValue: 50
             }
           }
+        }, {
+          opcode: 'setCenterLines',
+          blockType: BlockType.COMMAND,
+          text: formatMessage({
+            id: 'map.setCenterLines',
+            default: '中心線を表示 [MODE]',
+            description: 'show or hide the hairlines through the stage center'
+          }),
+          arguments: {
+            MODE: {
+              type: ArgumentType.STRING,
+              menu: 'centerLinesMenu',
+              defaultValue: 'off'
+            }
+          }
         }],
         menus: {
           pinColorMenu: {
@@ -1449,6 +1477,10 @@ var ExtensionBlocks = /*#__PURE__*/function () {
           pinNumberMenu: {
             acceptReporters: false,
             items: 'getPinNumberMenu'
+          },
+          centerLinesMenu: {
+            acceptReporters: false,
+            items: 'getCenterLinesMenu'
           }
         }
       };
@@ -1472,6 +1504,29 @@ var ExtensionBlocks = /*#__PURE__*/function () {
           id: 'map.pinNumber.off',
           default: 'しない',
           description: 'hide pin numbers'
+        }),
+        value: 'off'
+      }];
+    }
+
+    /**
+     * @returns {Array} - items for the center lines menu (する / しない).
+     */
+  }, {
+    key: "getCenterLinesMenu",
+    value: function getCenterLinesMenu() {
+      return [{
+        text: formatMessage({
+          id: 'map.centerLines.on',
+          default: 'する',
+          description: 'show center lines'
+        }),
+        value: 'on'
+      }, {
+        text: formatMessage({
+          id: 'map.centerLines.off',
+          default: 'しない',
+          description: 'hide center lines'
         }),
         value: 'off'
       }];
@@ -1695,6 +1750,33 @@ var ExtensionBlocks = /*#__PURE__*/function () {
      * Draw the attribution required by the current tile source's policy.
      * @param {CanvasRenderingContext2D} ctx - drawing context.
      */
+    /**
+     * Draw faint dotted gray hairlines along stage x = 0 and y = 0 so the
+     * map center is visible without a pin. Drawn over the pins and under the
+     * attribution label; skipped when turned off.
+     * @param {CanvasRenderingContext2D} ctx - drawing context.
+     */
+  }, {
+    key: "_drawCenterLines",
+    value: function _drawCenterLines(ctx) {
+      if (!this._centerLines) {
+        return;
+      }
+      var cx = STAGE_WIDTH / 2;
+      var cy = STAGE_HEIGHT / 2;
+      ctx.save();
+      ctx.strokeStyle = 'rgba(96, 96, 96, 0.7)';
+      ctx.lineWidth = 1;
+      ctx.setLineDash([3, 3]);
+      ctx.beginPath();
+      // +0.5 keeps the 1px line on a single pixel column/row (no blur).
+      ctx.moveTo(cx + 0.5, 0);
+      ctx.lineTo(cx + 0.5, STAGE_HEIGHT);
+      ctx.moveTo(0, cy + 0.5);
+      ctx.lineTo(STAGE_WIDTH, cy + 0.5);
+      ctx.stroke();
+      ctx.restore();
+    }
   }, {
     key: "_drawAttribution",
     value: function _drawAttribution(ctx) {
@@ -1914,6 +1996,7 @@ var ExtensionBlocks = /*#__PURE__*/function () {
           _iterator.f();
         }
         _this._drawMarkers(ctx, zoom, left, top);
+        _this._drawCenterLines(ctx);
         _this._drawAttribution(ctx);
         _this.runtime.renderer.updateBitmapSkin(_this._skinId, _this._canvas, 1);
         _this.runtime.requestRedraw();
@@ -2326,6 +2409,12 @@ var ExtensionBlocks = /*#__PURE__*/function () {
     key: "setPinNumber",
     value: function setPinNumber(args) {
       this._pinNumbered = Cast.toString(args.MODE) === 'on';
+      return this._redraw();
+    }
+  }, {
+    key: "setCenterLines",
+    value: function setCenterLines(args) {
+      this._centerLines = Cast.toString(args.MODE) === 'on';
       return this._redraw();
     }
   }, {
