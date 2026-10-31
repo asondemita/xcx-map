@@ -31,7 +31,7 @@ describe("blockClass", () => {
         const block = new blockClass(runtime);
         expect(block.centerLat).toBeCloseTo(35.681236, 5);
         expect(block.centerLng).toBeCloseTo(139.767125, 5);
-        expect(block.zoom).toBe(13);
+        expect(block.zoom).toBe(14);
     });
 
     test("zoom is clamped per tile type", () => {

@@ -189,7 +189,7 @@ class ExtensionBlocks {
         // Map state. Default to Tokyo Station.
         this.centerLat = 35.681236;
         this.centerLng = 139.767125;
-        this.zoom = 13;
+        this.zoom = 14;
 
         // Selected raster tile source (key of TILE_TYPES).
         this._mapType = DEFAULT_TILE_TYPE;
