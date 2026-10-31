@@ -988,9 +988,15 @@ class ExtensionBlocks {
     }
 
     /**
-     * Geocode a free keyword with OpenStreetMap Nominatim and show its map,
-     * fitting the result's bounding box. Subject to the Nominatim usage
-     * policy (max ~1 request/second, no bulk use).
+     * Geocode a free keyword and show its map.
+     * Place names (施設名・駅名) are resolved with OpenStreetMap Nominatim,
+     * fitting the result's bounding box. Nominatim cannot resolve most
+     * Japanese street addresses (番地付き住所), so when it returns nothing
+     * the keyword is retried against the GSI address search API
+     * (国土地理院 住所検索), which is strong on addresses but weak on place
+     * names; that is why it is only consulted as a fallback.
+     * Both services are subject to usage policies (max ~1 request/second,
+     * no bulk use).
      * @param {object} args - block arguments.
      * @returns {Promise|undefined} - resolves when the map has been redrawn.
      */
@@ -999,28 +1005,88 @@ class ExtensionBlocks {
         if (keyword === '' || typeof fetch === 'undefined') {
             return;
         }
-        const url = 'https://nominatim.openstreetmap.org/search' +
-            `?q=${encodeURIComponent(keyword)}&format=json&limit=1&accept-language=ja`;
-        return fetch(url, {headers: {Accept: 'application/json'}})
-            .then(response => response.json())
-            .then(data => {
-                if (!Array.isArray(data) || data.length === 0) {
+        return this._geocodeNominatim(keyword)
+            .then(result => {
+                if (result) {
+                    return result;
+                }
+                return this._geocodeGsiAddress(keyword);
+            })
+            .then(result => {
+                if (!result) {
                     return;
                 }
-                const result = data[0];
                 const box = result.boundingbox; // [south, north, west, east]
                 if (box && box.length === 4) {
                     this._fitToBounds(
                         Number(box[0]), Number(box[1]), Number(box[2]), Number(box[3])
                     );
                 } else {
-                    this.centerLat = Number(result.lat);
-                    this.centerLng = Number(result.lon);
-                    this.zoom = this._clampZoom(15);
+                    this.centerLat = result.lat;
+                    this.centerLng = result.lng;
+                    this.zoom = this._clampZoom(result.zoom);
                 }
                 return this._redraw();
             })
             .catch(() => {});
+    }
+
+    /**
+     * Look a keyword up with OpenStreetMap Nominatim.
+     * @param {string} keyword - place name or address.
+     * @returns {Promise<{lat: number, lng: number, zoom: number, boundingbox: ?Array}|null>}
+     *   best match, or null when nothing was found or the request failed.
+     */
+    _geocodeNominatim (keyword) {
+        const url = 'https://nominatim.openstreetmap.org/search' +
+            `?q=${encodeURIComponent(keyword)}&format=json&limit=1&accept-language=ja`;
+        return fetch(url, {headers: {Accept: 'application/json'}})
+            .then(response => response.json())
+            .then(data => {
+                if (!Array.isArray(data) || data.length === 0) {
+                    return null;
+                }
+                const result = data[0];
+                const lat = Number(result.lat);
+                const lng = Number(result.lon);
+                if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+                    return null;
+                }
+                return {lat, lng, zoom: 15, boundingbox: result.boundingbox};
+            })
+            .catch(() => null);
+    }
+
+    /**
+     * Look an address up with the GSI address search API (国土地理院 住所検索).
+     * The API answers with a GeoJSON feature list; the first feature is the
+     * best match. It resolves down to the block (番) level, so there is no
+     * bounding box and the map is shown at a fixed street-level zoom.
+     * @param {string} keyword - address such as 東京都港区芝公園4-2-8.
+     * @returns {Promise<{lat: number, lng: number, zoom: number, boundingbox: null}|null>}
+     *   best match, or null when nothing was found or the request failed.
+     */
+    _geocodeGsiAddress (keyword) {
+        const url = 'https://msearch.gsi.go.jp/address-search/AddressSearch' +
+            `?q=${encodeURIComponent(keyword)}`;
+        return fetch(url, {headers: {Accept: 'application/json'}})
+            .then(response => response.json())
+            .then(data => {
+                if (!Array.isArray(data) || data.length === 0) {
+                    return null;
+                }
+                const coords = data[0].geometry && data[0].geometry.coordinates; // [lng, lat]
+                if (!Array.isArray(coords) || coords.length < 2) {
+                    return null;
+                }
+                const lng = Number(coords[0]);
+                const lat = Number(coords[1]);
+                if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+                    return null;
+                }
+                return {lat, lng, zoom: 16, boundingbox: null};
+            })
+            .catch(() => null);
     }
 
     /**

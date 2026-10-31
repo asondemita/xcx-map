@@ -258,6 +258,80 @@ describe("blockClass", () => {
         expect(() => block.showMapByKeyword({ KEYWORD: "" })).not.toThrow();
     });
 
+    describe("showMapByKeyword geocoding (Nominatim, then GSI address search)", () => {
+        // Fake fetch: answers by URL host, counts requests.
+        const installFetch = ({ nominatim, gsi }) => {
+            const calls = { urls: [] };
+            global.fetch = url => {
+                calls.urls.push(url);
+                const body = url.includes("nominatim.openstreetmap.org") ? nominatim : gsi;
+                return Promise.resolve({ json: () => Promise.resolve(body) });
+            };
+            return calls;
+        };
+
+        afterEach(() => {
+            delete global.fetch;
+        });
+
+        test("uses the Nominatim result and does not call GSI when found", async () => {
+            const calls = installFetch({
+                nominatim: [{ lat: "35.6584", lon: "139.7455",
+                    boundingbox: ["35.657", "35.660", "139.744", "139.747"] }],
+                gsi: [{ geometry: { coordinates: [141.36, 43.07] } }]
+            });
+            const block = new blockClass(runtime);
+            await block.showMapByKeyword({ KEYWORD: "東京タワー" });
+            expect(calls.urls).toHaveLength(1);
+            expect(calls.urls[0]).toContain("nominatim.openstreetmap.org/search");
+            expect(calls.urls[0]).toContain(encodeURIComponent("東京タワー"));
+            expect(block.centerLat).toBeCloseTo(35.6585, 3);
+            expect(block.centerLng).toBeCloseTo(139.7455, 3);
+        });
+
+        test("falls back to GSI address search when Nominatim finds nothing", async () => {
+            const calls = installFetch({
+                nominatim: [],
+                gsi: [{ geometry: { coordinates: [139.745468, 35.658649] },
+                    properties: { title: "東京都港区芝公園四丁目２番" } }]
+            });
+            const block = new blockClass(runtime);
+            block.zoom = 5;
+            await block.showMapByKeyword({ KEYWORD: "東京都港区芝公園4-2-8" });
+            expect(calls.urls).toHaveLength(2);
+            expect(calls.urls[1]).toContain("msearch.gsi.go.jp/address-search/AddressSearch");
+            expect(calls.urls[1]).toContain(encodeURIComponent("東京都港区芝公園4-2-8"));
+            expect(block.centerLat).toBeCloseTo(35.658649, 5);
+            expect(block.centerLng).toBeCloseTo(139.745468, 5);
+            expect(block.zoom).toBe(16);
+        });
+
+        test("leaves the map unchanged when both services find nothing", async () => {
+            installFetch({ nominatim: [], gsi: [] });
+            const block = new blockClass(runtime);
+            const { centerLat, centerLng, zoom } = block;
+            await block.showMapByKeyword({ KEYWORD: "そんな場所はない" });
+            expect(block.centerLat).toBe(centerLat);
+            expect(block.centerLng).toBe(centerLng);
+            expect(block.zoom).toBe(zoom);
+        });
+
+        test("falls back to GSI when the Nominatim request fails", async () => {
+            global.fetch = url => {
+                if (url.includes("nominatim.openstreetmap.org")) {
+                    return Promise.reject(new Error("network"));
+                }
+                return Promise.resolve({ json: () => Promise.resolve(
+                    [{ geometry: { coordinates: [135.496338, 34.701881] } }]
+                ) });
+            };
+            const block = new blockClass(runtime);
+            await block.showMapByKeyword({ KEYWORD: "大阪府大阪市北区梅田3-1-3" });
+            expect(block.centerLat).toBeCloseTo(34.701881, 5);
+            expect(block.centerLng).toBeCloseTo(135.496338, 5);
+        });
+    });
+
     test("showPinMap centers on the given pin, no-op if missing", () => {
         const block = new blockClass(runtime);
         block._points = [
