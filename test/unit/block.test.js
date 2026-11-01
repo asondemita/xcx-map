@@ -304,6 +304,90 @@ describe("blockClass", () => {
         expect(block._pinNumbered).toBe(false);
     });
 
+    describe("mouse / touch control (drag, wheel, pinch)", () => {
+        // lat/lng of the map point under a stage position
+        const under = (block, x, y) => ({
+            lat: block._worldYToLat(block._latToWorldY(block.centerLat, block.zoom) + y - 180, block.zoom),
+            lng: block._worldXToLng(block._lngToWorldX(block.centerLng, block.zoom) + x - 240, block.zoom)
+        });
+
+        test("off by default outside the editor; the block turns it on and off", () => {
+            const block = new blockClass(runtime);
+            expect(block._mouseControl).toBe(false);
+            // no document in node -> not the editor
+            expect(block._isEditorMode()).toBe(false);
+            expect(block._mouseControlActive()).toBe(false);
+            block.setMouseControl({ MODE: "on" });
+            expect(block._mouseControlActive()).toBe(true);
+            block.setMouseControl({ MODE: "off" });
+            expect(block._mouseControlActive()).toBe(false);
+            expect(block.getMouseControlMenu().map(i => i.value)).toEqual(["on", "off"]);
+        });
+
+        test("one pointer drags the map by the moved stage pixels, zoom unchanged", () => {
+            const block = new blockClass(runtime);
+            const startX = block._lngToWorldX(block.centerLng, block.zoom);
+            const startY = block._latToWorldY(block.centerLat, block.zoom);
+            block._pointerDown(1, 240, 180);
+            block._pointerMove(1, 300, 150); // drag right 60, up 30
+            expect(block._lngToWorldX(block.centerLng, block.zoom)).toBeCloseTo(startX - 60, 6);
+            expect(block._latToWorldY(block.centerLat, block.zoom)).toBeCloseTo(startY + 30, 6);
+            expect(block.zoom).toBe(14);
+            block._pointerUp(1);
+            expect(block._gesture).toBeNull();
+            // moves after release are ignored
+            block._pointerMove(1, 400, 400);
+            expect(block._lngToWorldX(block.centerLng, block.zoom)).toBeCloseTo(startX - 60, 6);
+        });
+
+        test("_zoomAt keeps the map point under the cursor fixed", () => {
+            const block = new blockClass(runtime);
+            const before = under(block, 100, 50);
+            block._zoomAt(16, 100, 50);
+            expect(block.zoom).toBe(16);
+            const after = under(block, 100, 50);
+            expect(after.lat).toBeCloseTo(before.lat, 9);
+            expect(after.lng).toBeCloseTo(before.lng, 9);
+            // and the center itself moved (it is no longer the fixed point)
+            expect(block.centerLat).not.toBeCloseTo(35.681236, 5);
+        });
+
+        test("pinch: doubling the distance zooms in one level around the midpoint", () => {
+            const block = new blockClass(runtime);
+            const before = under(block, 240, 180);
+            block._pointerDown(1, 200, 180);
+            block._pointerDown(2, 280, 180); // dist 80
+            block._pointerMove(1, 160, 180);
+            block._pointerMove(2, 320, 180); // dist 160
+            expect(block.zoom).toBe(15);
+            const after = under(block, 240, 180);
+            expect(after.lat).toBeCloseTo(before.lat, 9);
+            expect(after.lng).toBeCloseTo(before.lng, 9);
+            // lifting one finger re-anchors; the other keeps panning at the new zoom
+            block._pointerUp(2);
+            const x0 = block._lngToWorldX(block.centerLng, block.zoom);
+            block._pointerMove(1, 170, 180);
+            expect(block._lngToWorldX(block.centerLng, block.zoom)).toBeCloseTo(x0 - 10, 6);
+        });
+
+        test("wheel: small deltas accumulate, ~40px per zoom step, up = in", () => {
+            const block = new blockClass(runtime);
+            block._wheel(-10, 240, 180);
+            block._wheel(-10, 240, 180);
+            block._wheel(-10, 240, 180);
+            expect(block.zoom).toBe(14);
+            block._wheel(-10, 240, 180);
+            expect(block.zoom).toBe(15);
+            // a direction change resets the accumulator; one notch (100) = one step
+            block._wheel(100, 240, 180);
+            expect(block.zoom).toBe(14);
+            // clamped at the tile source's max zoom
+            block.zoom = 19;
+            block._wheel(-100, 240, 180);
+            expect(block.zoom).toBe(19);
+        });
+    });
+
     test("mapZoom reports the current zoom", () => {
         const block = new blockClass(runtime);
         expect(block.mapZoom()).toBe(14);

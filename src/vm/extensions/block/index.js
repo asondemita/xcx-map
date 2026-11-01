@@ -208,6 +208,16 @@ class ExtensionBlocks {
         // Map layer transparency (ghost effect: 0 = opaque, 100 = invisible).
         this._opacity = 0;
 
+        // Direct mouse/touch control (drag = pan, wheel / pinch = zoom).
+        // Always active in the editor, like dragging sprites; in full screen
+        // and in the player only when the project turns this on.
+        this._mouseControl = false;
+        this._pointers = new Map(); // pointerId -> {x, y} in stage px
+        this._gesture = null; // snapshot taken when the pointer set changes
+        this._wheelAccum = 0;
+        this._redrawScheduled = false;
+        this._listenersAttached = false;
+
         // Renderer objects (created lazily on first map display).
         this._skinId = null;
         this._drawableId = null;
@@ -609,6 +619,22 @@ class ExtensionBlocks {
                             defaultValue: 'off'
                         }
                     }
+                },
+                {
+                    opcode: 'setMouseControl',
+                    blockType: BlockType.COMMAND,
+                    text: formatMessage({
+                        id: 'map.setMouseControl',
+                        default: '地図をマウスで動かせるように [MODE]',
+                        description: 'allow dragging / wheel zooming the map in full screen and player'
+                    }),
+                    arguments: {
+                        MODE: {
+                            type: ArgumentType.STRING,
+                            menu: 'mouseControlMenu',
+                            defaultValue: 'on'
+                        }
+                    }
                 }
             ],
             menus: {
@@ -627,6 +653,10 @@ class ExtensionBlocks {
                 centerLinesMenu: {
                     acceptReporters: false,
                     items: 'getCenterLinesMenu'
+                },
+                mouseControlMenu: {
+                    acceptReporters: false,
+                    items: 'getMouseControlMenu'
                 }
             }
         };
@@ -665,6 +695,22 @@ class ExtensionBlocks {
             },
             {
                 text: formatMessage({id: 'map.centerLines.off', default: 'なし', description: 'no center mark'}),
+                value: 'off'
+            }
+        ];
+    }
+
+    /**
+     * @returns {Array} - items for the mouse control menu (する / しない).
+     */
+    getMouseControlMenu () {
+        return [
+            {
+                text: formatMessage({id: 'map.mouseControl.on', default: 'する', description: 'allow mouse control'}),
+                value: 'on'
+            },
+            {
+                text: formatMessage({id: 'map.mouseControl.off', default: 'しない', description: 'no mouse control'}),
                 value: 'off'
             }
         ];
@@ -799,7 +845,248 @@ class ExtensionBlocks {
         this._drawableId = renderer.createDrawable('background');
         renderer.updateDrawableSkinId(this._drawableId, this._skinId);
         renderer.updateDrawableEffect(this._drawableId, 'ghost', this._opacity);
+        this._attachPointerListeners(renderer.canvas);
         return true;
+    }
+
+    // ---- Direct mouse / touch control ----
+
+    /**
+     * Listen on the stage canvas for drag (pan), wheel (zoom) and pinch
+     * (zoom) gestures. Pointer events cover mouse and touch alike; the stage
+     * already sets touch-action: none so the browser leaves touches to us.
+     * @param {HTMLCanvasElement} canvas - the renderer's stage canvas.
+     */
+    _attachPointerListeners (canvas) {
+        if (this._listenersAttached || !canvas || typeof canvas.addEventListener !== 'function') {
+            return;
+        }
+        this._listenersAttached = true;
+        this._stageCanvas = canvas;
+        canvas.addEventListener('pointerdown', e => this._onPointerDown(e));
+        // Move/up go on the document so a drag that leaves the stage still ends.
+        document.addEventListener('pointermove', e => this._onPointerMove(e));
+        document.addEventListener('pointerup', e => this._onPointerUp(e));
+        document.addEventListener('pointercancel', e => this._onPointerUp(e));
+        canvas.addEventListener('wheel', e => this._onWheel(e), {passive: false});
+    }
+
+    /**
+     * Whether the editor (not full screen, not the player) is showing.
+     * scratch-gui lets you drag any sprite in this state, and the map
+     * follows the same rule. The GUI keeps this in its own state, so it is
+     * read from the page: the blocks workspace exists only in the editor,
+     * and full screen adds a "full-screen" class around the stage.
+     * @returns {boolean} - true in the editor.
+     */
+    _isEditorMode () {
+        if (typeof document === 'undefined') return false;
+        const canvas = this._stageCanvas;
+        if (canvas && typeof canvas.closest === 'function' && canvas.closest('[class*="full-screen"]')) {
+            return false;
+        }
+        return Boolean(document.querySelector('.injectionDiv'));
+    }
+
+    /**
+     * @returns {boolean} - whether drag / wheel / pinch should move the map now.
+     */
+    _mouseControlActive () {
+        return this._mouseControl || this._isEditorMode();
+    }
+
+    /**
+     * Stage-pixel position of a pointer event (0..480, 0..360).
+     * @param {PointerEvent|WheelEvent} e - the event.
+     * @returns {{x: number, y: number, cssX: number, cssY: number}} - stage px and
+     *   CSS px relative to the canvas (the latter is what renderer.pick wants).
+     */
+    _eventStagePos (e) {
+        const rect = this._stageCanvas.getBoundingClientRect();
+        const cssX = e.clientX - rect.left;
+        const cssY = e.clientY - rect.top;
+        const scale = rect.width > 0 ? STAGE_WIDTH / rect.width : 1;
+        return {x: cssX * scale, y: cssY * scale, cssX, cssY};
+    }
+
+    /**
+     * Whether a sprite under the pointer should take the drag instead of
+     * the map: any sprite in the editor, draggable sprites elsewhere (the
+     * same rule scratch-gui applies to sprite dragging).
+     * @param {number} cssX - CSS px from the canvas left edge.
+     * @param {number} cssY - CSS px from the canvas top edge.
+     * @returns {boolean} - true when the map must not start a drag.
+     */
+    _spriteTakesDrag (cssX, cssY) {
+        const renderer = this.runtime.renderer;
+        if (!renderer || typeof renderer.pick !== 'function') return false;
+        const drawableId = renderer.pick(cssX, cssY);
+        if (drawableId === null || typeof drawableId === 'undefined' || drawableId < 0) return false;
+        if (drawableId === this._drawableId) return false;
+        const target = typeof this.runtime.getTargetByDrawableId === 'function' ?
+            this.runtime.getTargetByDrawableId(drawableId) : null;
+        if (!target || target.isStage) return false;
+        return this._isEditorMode() || Boolean(target.draggable);
+    }
+
+    _onPointerDown (e) {
+        if (!this._mouseControlActive()) return;
+        if (e.pointerType === 'mouse' && e.button !== 0) return;
+        const pos = this._eventStagePos(e);
+        if (this._pointers.size === 0 && this._spriteTakesDrag(pos.cssX, pos.cssY)) return;
+        this._pointerDown(e.pointerId, pos.x, pos.y);
+    }
+
+    _onPointerMove (e) {
+        if (!this._pointers.has(e.pointerId)) return;
+        const pos = this._eventStagePos(e);
+        this._pointerMove(e.pointerId, pos.x, pos.y);
+        e.preventDefault();
+    }
+
+    _onPointerUp (e) {
+        this._pointerUp(e.pointerId);
+    }
+
+    _onWheel (e) {
+        if (!this._mouseControlActive()) return;
+        e.preventDefault();
+        const pos = this._eventStagePos(e);
+        // deltaMode 1 = lines (Firefox); treat a line as ~16px.
+        const delta = e.deltaMode === 1 ? e.deltaY * 16 : e.deltaY;
+        this._wheel(delta, pos.x, pos.y);
+    }
+
+    /**
+     * Start tracking a pointer (DOM-free; tests call this directly).
+     * @param {number|string} id - pointer id.
+     * @param {number} x - stage x.
+     * @param {number} y - stage y.
+     */
+    _pointerDown (id, x, y) {
+        this._pointers.set(id, {x, y});
+        this._beginGesture();
+    }
+
+    /**
+     * Move a tracked pointer: one pointer pans, two pointers pan + pinch-zoom.
+     * The map point that was under the pointers' midpoint when the gesture
+     * began stays under the current midpoint.
+     * @param {number|string} id - pointer id.
+     * @param {number} x - stage x.
+     * @param {number} y - stage y.
+     */
+    _pointerMove (id, x, y) {
+        if (!this._pointers.has(id)) return;
+        this._pointers.set(id, {x, y});
+        const g = this._gesture;
+        if (!g) return;
+        const pts = Array.from(this._pointers.values());
+        const mid = this._midpoint(pts);
+        let newZoom = g.zoom;
+        if (pts.length >= 2 && g.dist > 0) {
+            const dist = this._distance(pts[0], pts[1]);
+            newZoom = this._clampZoom(Math.round(g.zoom + Math.log2(dist / g.dist)));
+        }
+        const scale = Math.pow(2, newZoom - g.zoom);
+        // World px (at the new zoom) of the map point that was under the start midpoint.
+        const anchorX = (g.centerX + g.x - (STAGE_WIDTH / 2)) * scale;
+        const anchorY = (g.centerY + g.y - (STAGE_HEIGHT / 2)) * scale;
+        this.centerLng = this._worldXToLng(anchorX - (mid.x - (STAGE_WIDTH / 2)), newZoom);
+        this.centerLat = this._worldYToLat(anchorY - (mid.y - (STAGE_HEIGHT / 2)), newZoom);
+        this.zoom = newZoom;
+        this._scheduleRedraw();
+    }
+
+    /**
+     * Stop tracking a pointer; a remaining pointer continues as a fresh gesture.
+     * @param {number|string} id - pointer id.
+     */
+    _pointerUp (id) {
+        if (!this._pointers.delete(id)) return;
+        if (this._pointers.size > 0) {
+            this._beginGesture();
+        } else {
+            this._gesture = null;
+        }
+    }
+
+    /**
+     * Wheel input: one zoom step per ~40px of accumulated scroll, zooming
+     * around the pointer. Wheel up (negative delta) zooms in.
+     * @param {number} deltaY - wheel delta in px.
+     * @param {number} x - stage x of the pointer.
+     * @param {number} y - stage y of the pointer.
+     */
+    _wheel (deltaY, x, y) {
+        if (Math.sign(deltaY) !== Math.sign(this._wheelAccum)) {
+            this._wheelAccum = 0;
+        }
+        this._wheelAccum += deltaY;
+        const STEP = 40;
+        if (Math.abs(this._wheelAccum) < STEP) return;
+        const direction = this._wheelAccum < 0 ? 1 : -1;
+        this._wheelAccum = 0;
+        this._zoomAt(this._clampZoom(this.zoom + direction), x, y);
+    }
+
+    /**
+     * Change the zoom keeping the map point at stage (x, y) in place.
+     * @param {number} newZoom - target zoom.
+     * @param {number} x - stage x of the fixed point.
+     * @param {number} y - stage y of the fixed point.
+     */
+    _zoomAt (newZoom, x, y) {
+        if (newZoom === this.zoom) return;
+        const z = this.zoom;
+        const scale = Math.pow(2, newZoom - z);
+        const anchorX = (this._lngToWorldX(this.centerLng, z) + x - (STAGE_WIDTH / 2)) * scale;
+        const anchorY = (this._latToWorldY(this.centerLat, z) + y - (STAGE_HEIGHT / 2)) * scale;
+        this.centerLng = this._worldXToLng(anchorX - (x - (STAGE_WIDTH / 2)), newZoom);
+        this.centerLat = this._worldYToLat(anchorY - (y - (STAGE_HEIGHT / 2)), newZoom);
+        this.zoom = newZoom;
+        this._scheduleRedraw();
+    }
+
+    // Snapshot the view and the pointers so moves are relative to it.
+    _beginGesture () {
+        const pts = Array.from(this._pointers.values());
+        const mid = this._midpoint(pts);
+        this._gesture = {
+            zoom: this.zoom,
+            centerX: this._lngToWorldX(this.centerLng, this.zoom),
+            centerY: this._latToWorldY(this.centerLat, this.zoom),
+            x: mid.x,
+            y: mid.y,
+            dist: pts.length >= 2 ? this._distance(pts[0], pts[1]) : 0
+        };
+    }
+
+    _midpoint (pts) {
+        const n = pts.length || 1;
+        return {
+            x: pts.reduce((sum, p) => sum + p.x, 0) / n,
+            y: pts.reduce((sum, p) => sum + p.y, 0) / n
+        };
+    }
+
+    _distance (a, b) {
+        return Math.hypot(a.x - b.x, a.y - b.y);
+    }
+
+    // Collapse a burst of gesture updates into one redraw per frame.
+    _scheduleRedraw () {
+        if (this._redrawScheduled) return;
+        this._redrawScheduled = true;
+        const run = () => {
+            this._redrawScheduled = false;
+            this._redraw();
+        };
+        if (typeof requestAnimationFrame === 'function') {
+            requestAnimationFrame(run);
+        } else {
+            run();
+        }
     }
 
     /**
@@ -1452,6 +1739,10 @@ class ExtensionBlocks {
             this._centerMark = 'line';
         }
         return this._redraw();
+    }
+
+    setMouseControl (args) {
+        this._mouseControl = Cast.toString(args.MODE) === 'on';
     }
 
     addCenterPin (args) {
