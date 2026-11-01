@@ -485,6 +485,15 @@ class ExtensionBlocks {
                     })
                 },
                 {
+                    opcode: 'mapZoom',
+                    blockType: BlockType.REPORTER,
+                    text: formatMessage({
+                        id: 'map.mapZoom',
+                        default: 'ズーム',
+                        description: 'current zoom level of the map'
+                    })
+                },
+                {
                     opcode: 'currentLat',
                     blockType: BlockType.REPORTER,
                     text: formatMessage({
@@ -1105,9 +1114,12 @@ class ExtensionBlocks {
     }
 
     /**
-     * Geocode a free keyword and show its map.
-     * Place names (施設名・駅名) are resolved with OpenStreetMap Nominatim,
-     * fitting the result's bounding box. Nominatim cannot resolve most
+     * Geocode a free keyword and center the map on it. The zoom is kept, like
+     * showMapAt / showPinMap, so searching one place after another while
+     * dropping pins never changes the scale; use the zoom blocks to zoom out
+     * for a wide area such as a prefecture.
+     * Place names (施設名・駅名) are resolved with OpenStreetMap Nominatim.
+     * Nominatim cannot resolve most
      * Japanese street addresses (番地付き住所), so when it returns nothing
      * the keyword is retried against the GSI address search API
      * (国土地理院 住所検索), which is strong on addresses but weak on place
@@ -1133,16 +1145,8 @@ class ExtensionBlocks {
                 if (!result) {
                     return;
                 }
-                const box = result.boundingbox; // [south, north, west, east]
-                if (box && box.length === 4) {
-                    this._fitToBounds(
-                        Number(box[0]), Number(box[1]), Number(box[2]), Number(box[3])
-                    );
-                } else {
-                    this.centerLat = result.lat;
-                    this.centerLng = result.lng;
-                    this.zoom = this._clampZoom(result.zoom);
-                }
+                this.centerLat = result.lat;
+                this.centerLng = result.lng;
                 return this._redraw();
             })
             .catch(() => {});
@@ -1151,7 +1155,7 @@ class ExtensionBlocks {
     /**
      * Look a keyword up with OpenStreetMap Nominatim.
      * @param {string} keyword - place name or address.
-     * @returns {Promise<{lat: number, lng: number, zoom: number, boundingbox: ?Array}|null>}
+     * @returns {Promise<{lat: number, lng: number}|null>}
      *   best match, or null when nothing was found or the request failed.
      */
     _geocodeNominatim (keyword) {
@@ -1169,7 +1173,7 @@ class ExtensionBlocks {
                 if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
                     return null;
                 }
-                return {lat, lng, zoom: 15, boundingbox: result.boundingbox};
+                return {lat, lng};
             })
             .catch(() => null);
     }
@@ -1177,10 +1181,9 @@ class ExtensionBlocks {
     /**
      * Look an address up with the GSI address search API (国土地理院 住所検索).
      * The API answers with a GeoJSON feature list; the first feature is the
-     * best match. It resolves down to the block (番) level, so there is no
-     * bounding box and the map is shown at a fixed street-level zoom.
+     * best match. It resolves down to the block (番) level.
      * @param {string} keyword - address such as 東京都港区芝公園4-2-8.
-     * @returns {Promise<{lat: number, lng: number, zoom: number, boundingbox: null}|null>}
+     * @returns {Promise<{lat: number, lng: number}|null>}
      *   best match, or null when nothing was found or the request failed.
      */
     _geocodeGsiAddress (keyword) {
@@ -1201,7 +1204,7 @@ class ExtensionBlocks {
                 if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
                     return null;
                 }
-                return {lat, lng, zoom: 16, boundingbox: null};
+                return {lat, lng};
             })
             .catch(() => null);
     }
@@ -1416,6 +1419,10 @@ class ExtensionBlocks {
         return this.centerLng;
     }
 
+    mapZoom () {
+        return this.zoom;
+    }
+
     // ---- Blocks: fit to points ----
 
     clearPoints () {
@@ -1611,44 +1618,6 @@ class ExtensionBlocks {
         this.centerLat = this._worldYToLat((b.minY + b.maxY) / 2, fitZoom);
         this.zoom = fitZoom;
         return this._redraw();
-    }
-
-    /**
-     * Largest integer zoom at which a lat/lng box fits the stage (with margin).
-     * @param {number} south - southern latitude.
-     * @param {number} north - northern latitude.
-     * @param {number} west - western longitude.
-     * @param {number} east - eastern longitude.
-     * @returns {number} - fitting integer zoom.
-     */
-    _fitZoomForBounds (south, north, west, east) {
-        const PADDING = 24;
-        const usableWidth = STAGE_WIDTH - (PADDING * 2);
-        const usableHeight = STAGE_HEIGHT - (PADDING * 2);
-        for (let z = this._maxZoom(); z >= MIN_ZOOM; z--) {
-            const w = Math.abs(this._lngToWorldX(east, z) - this._lngToWorldX(west, z));
-            const h = Math.abs(this._latToWorldY(south, z) - this._latToWorldY(north, z));
-            if (w <= usableWidth && h <= usableHeight) {
-                return z;
-            }
-        }
-        return MIN_ZOOM;
-    }
-
-    /**
-     * Center and zoom the map to fit a lat/lng bounding box.
-     * @param {number} south - southern latitude.
-     * @param {number} north - northern latitude.
-     * @param {number} west - western longitude.
-     * @param {number} east - eastern longitude.
-     */
-    _fitToBounds (south, north, west, east) {
-        const fitZoom = this._fitZoomForBounds(south, north, west, east);
-        const cx = (this._lngToWorldX(west, fitZoom) + this._lngToWorldX(east, fitZoom)) / 2;
-        const cy = (this._latToWorldY(north, fitZoom) + this._latToWorldY(south, fitZoom)) / 2;
-        this.centerLng = this._worldXToLng(cx, fitZoom);
-        this.centerLat = this._worldYToLat(cy, fitZoom);
-        this.zoom = fitZoom;
     }
 
     // ---- Blocks: current location / distance ----

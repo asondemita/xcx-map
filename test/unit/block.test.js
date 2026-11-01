@@ -201,25 +201,6 @@ describe("blockClass", () => {
         expect(mid.w).toBeGreaterThan(480);
     });
 
-    test("_fitZoomForBounds is low for a wide box, high for a tiny box", () => {
-        const block = new blockClass(runtime);
-        const wide = block._fitZoomForBounds(10, 30, 20, 40);
-        const tiny = block._fitZoomForBounds(35.0, 35.001, 139.0, 139.001);
-        expect(wide).toBeLessThan(tiny);
-        expect(wide).toBeGreaterThanOrEqual(0);
-    });
-
-    test("_fitToBounds centers within the given lat/lng box", () => {
-        const block = new blockClass(runtime);
-        block._fitToBounds(34, 36, 135, 140); // south, north, west, east
-        expect(block.centerLat).toBeGreaterThan(34);
-        expect(block.centerLat).toBeLessThan(36);
-        expect(block.centerLng).toBeGreaterThan(135);
-        expect(block.centerLng).toBeLessThan(140);
-        expect(block.zoom).toBeGreaterThanOrEqual(0);
-        expect(block.zoom).toBeLessThanOrEqual(19);
-    });
-
     test("pins draw their order number only when numbering is on", () => {
         const block = new blockClass(runtime);
         const texts = [];
@@ -323,6 +304,13 @@ describe("blockClass", () => {
         expect(block._pinNumbered).toBe(false);
     });
 
+    test("mapZoom reports the current zoom", () => {
+        const block = new blockClass(runtime);
+        expect(block.mapZoom()).toBe(14);
+        block.setZoom({ ZOOM: 9 });
+        expect(block.mapZoom()).toBe(9);
+    });
+
     test("showMapByKeyword does not throw for empty keyword", () => {
         const block = new blockClass(runtime);
         expect(() => block.showMapByKeyword({ KEYWORD: "" })).not.toThrow();
@@ -351,12 +339,15 @@ describe("blockClass", () => {
                 gsi: [{ geometry: { coordinates: [141.36, 43.07] } }]
             });
             const block = new blockClass(runtime);
+            block.zoom = 12;
             await block.showMapByKeyword({ KEYWORD: "東京タワー" });
             expect(calls.urls).toHaveLength(1);
             expect(calls.urls[0]).toContain("nominatim.openstreetmap.org/search");
             expect(calls.urls[0]).toContain(encodeURIComponent("東京タワー"));
-            expect(block.centerLat).toBeCloseTo(35.6585, 3);
-            expect(block.centerLng).toBeCloseTo(139.7455, 3);
+            // centers on the result point; the bounding box no longer changes the zoom
+            expect(block.centerLat).toBeCloseTo(35.6584, 4);
+            expect(block.centerLng).toBeCloseTo(139.7455, 4);
+            expect(block.zoom).toBe(12);
         });
 
         test("falls back to GSI address search when Nominatim finds nothing", async () => {
@@ -368,12 +359,13 @@ describe("blockClass", () => {
             const block = new blockClass(runtime);
             block.zoom = 5;
             await block.showMapByKeyword({ KEYWORD: "東京都港区芝公園4-2-8" });
+            // zoom is kept for address results too
             expect(calls.urls).toHaveLength(2);
             expect(calls.urls[1]).toContain("msearch.gsi.go.jp/address-search/AddressSearch");
             expect(calls.urls[1]).toContain(encodeURIComponent("東京都港区芝公園4-2-8"));
             expect(block.centerLat).toBeCloseTo(35.658649, 5);
             expect(block.centerLng).toBeCloseTo(139.745468, 5);
-            expect(block.zoom).toBe(16);
+            expect(block.zoom).toBe(5);
         });
 
         test("leaves the map unchanged when both services find nothing", async () => {
