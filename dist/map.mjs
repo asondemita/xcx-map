@@ -19,7 +19,7 @@ var translations$1 = {
 }
 };
 
-var version$1 = "1.8.0";
+var version$1 = "1.8.1";
 
 /**
  * This is an extension for Xcratch.
@@ -2173,19 +2173,21 @@ var ExtensionBlocks = /*#__PURE__*/function () {
     }
 
     /**
-     * Small gray crosshair at the stage center: four short arms with a gap in
-     * the middle (so the exact point stays visible) and a small circle,
-     * stroked twice (white halo, then gray) so it shows on any map.
+     * Red crosshair at the stage center: four short arms with a gap in the
+     * middle (so the exact point stays visible) and a circle, stroked twice
+     * (white halo, then red) so it stands out on any map. Red because map
+     * tiles use gray for roads and outlines; 2px so it survives the small
+     * stage. A 2px line centered on an integer coordinate stays crisp.
      * @param {CanvasRenderingContext2D} ctx - drawing context.
      */
   }, {
     key: "_drawCenterCross",
     value: function _drawCenterCross(ctx) {
-      var cx = STAGE_WIDTH / 2 + 0.5;
-      var cy = STAGE_HEIGHT / 2 + 0.5;
-      var arm = 12;
-      var gap = 3;
-      var radius = 4;
+      var cx = STAGE_WIDTH / 2;
+      var cy = STAGE_HEIGHT / 2;
+      var arm = 16;
+      var gap = 4;
+      var radius = 6;
       ctx.save();
       ctx.setLineDash([]);
       ctx.lineCap = 'round';
@@ -2200,11 +2202,11 @@ var ExtensionBlocks = /*#__PURE__*/function () {
       ctx.lineTo(cx + arm, cy);
       ctx.moveTo(cx + radius, cy);
       ctx.arc(cx, cy, radius, 0, Math.PI * 2);
-      ctx.strokeStyle = 'rgba(255, 255, 255, 0.8)';
-      ctx.lineWidth = 3;
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.85)';
+      ctx.lineWidth = 4;
       ctx.stroke();
-      ctx.strokeStyle = 'rgba(96, 96, 96, 0.9)';
-      ctx.lineWidth = 1;
+      ctx.strokeStyle = '#e53935';
+      ctx.lineWidth = 2;
       ctx.stroke();
       ctx.restore();
     }
