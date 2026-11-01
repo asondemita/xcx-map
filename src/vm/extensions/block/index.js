@@ -1148,17 +1148,19 @@ class ExtensionBlocks {
     }
 
     /**
-     * Small gray crosshair at the stage center: four short arms with a gap in
-     * the middle (so the exact point stays visible) and a small circle,
-     * stroked twice (white halo, then gray) so it shows on any map.
+     * Red crosshair at the stage center: four short arms with a gap in the
+     * middle (so the exact point stays visible) and a circle, stroked twice
+     * (white halo, then red) so it stands out on any map. Red because map
+     * tiles use gray for roads and outlines; 2px so it survives the small
+     * stage. A 2px line centered on an integer coordinate stays crisp.
      * @param {CanvasRenderingContext2D} ctx - drawing context.
      */
     _drawCenterCross (ctx) {
-        const cx = (STAGE_WIDTH / 2) + 0.5;
-        const cy = (STAGE_HEIGHT / 2) + 0.5;
-        const arm = 12;
-        const gap = 3;
-        const radius = 4;
+        const cx = STAGE_WIDTH / 2;
+        const cy = STAGE_HEIGHT / 2;
+        const arm = 16;
+        const gap = 4;
+        const radius = 6;
         ctx.save();
         ctx.setLineDash([]);
         ctx.lineCap = 'round';
@@ -1173,11 +1175,11 @@ class ExtensionBlocks {
         ctx.lineTo(cx + arm, cy);
         ctx.moveTo(cx + radius, cy);
         ctx.arc(cx, cy, radius, 0, Math.PI * 2);
-        ctx.strokeStyle = 'rgba(255, 255, 255, 0.8)';
-        ctx.lineWidth = 3;
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.85)';
+        ctx.lineWidth = 4;
         ctx.stroke();
-        ctx.strokeStyle = 'rgba(96, 96, 96, 0.9)';
-        ctx.lineWidth = 1;
+        ctx.strokeStyle = '#e53935';
+        ctx.lineWidth = 2;
         ctx.stroke();
         ctx.restore();
     }

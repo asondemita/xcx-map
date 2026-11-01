@@ -229,7 +229,7 @@ describe("blockClass", () => {
 
     describe("center mark (lines / cross / none)", () => {
         const makeCtx = () => {
-            const calls = { moveTo: [], lineTo: [], arc: [], stroke: 0, dash: null };
+            const calls = { moveTo: [], lineTo: [], arc: [], stroke: 0, dash: null, styles: [], widths: [] };
             const ctx = new Proxy({}, {
                 get: (_t, prop) => {
                     if (prop === "moveTo") return (x, y) => calls.moveTo.push([x, y]);
@@ -239,7 +239,11 @@ describe("blockClass", () => {
                     if (prop === "setLineDash") return d => { calls.dash = d; };
                     return () => {};
                 },
-                set: () => true
+                set: (_t, prop, value) => {
+                    if (prop === "strokeStyle") calls.styles.push(value);
+                    if (prop === "lineWidth") calls.widths.push(value);
+                    return true;
+                }
             });
             return { ctx, calls };
         };
@@ -257,24 +261,27 @@ describe("blockClass", () => {
             expect(calls.dash).toEqual([3, 3]);
         });
 
-        test("cross (default): four short arms with a gap plus a circle, halo then gray", () => {
+        test("cross (default): four short arms with a gap plus a circle, halo then red", () => {
             const block = new blockClass(runtime);
             expect(block._centerMark).toBe("cross");
             const { ctx, calls } = makeCtx();
             block._drawCenterMark(ctx);
             expect(calls.stroke).toBe(2);
             expect(calls.dash).toEqual([]);
-            // arms end 3px short of the center on every side (gap endpoints are
+            // arms end 4px short of the center on every side (gap endpoints are
             // where one arm stops and the next starts)
             const points = calls.moveTo.concat(calls.lineTo);
             expect(points).toEqual(expect.arrayContaining([
-                [240.5, 180.5 - 3], [240.5, 180.5 + 3], [240.5 - 3, 180.5], [240.5 + 3, 180.5]
+                [240, 180 - 4], [240, 180 + 4], [240 - 4, 180], [240 + 4, 180]
             ]));
-            // arm tips 12px out
+            // arm tips 16px out
             expect(points).toEqual(expect.arrayContaining([
-                [240.5, 180.5 - 12], [240.5, 180.5 + 12], [240.5 - 12, 180.5], [240.5 + 12, 180.5]
+                [240, 180 - 16], [240, 180 + 16], [240 - 16, 180], [240 + 16, 180]
             ]));
-            expect(calls.arc).toEqual([[240.5, 180.5, 4]]);
+            expect(calls.arc).toEqual([[240, 180, 6]]);
+            // white halo first (wide), then the red line on top
+            expect(calls.styles).toEqual(["rgba(255, 255, 255, 0.85)", "#e53935"]);
+            expect(calls.widths).toEqual([4, 2]);
         });
 
         test("off draws nothing; 'on' and unknown values fall back to lines", () => {
