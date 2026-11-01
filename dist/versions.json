@@ -2,6 +2,11 @@
   "extensionId": "map",
   "versions": [
     {
+      "version": "1.8.0",
+      "buildDate": "2026-11-01T00:28:15.652Z",
+      "module": "1.8.0/map.mjs"
+    },
+    {
       "version": "1.7.0",
       "buildDate": "2026-11-01T00:08:39.252Z",
       "module": "1.7.0/map.mjs"
@@ -142,5 +147,5 @@
       "module": "0.1.0/map.mjs"
     }
   ],
-  "latest": "1.7.0"
+  "latest": "1.8.0"
 }

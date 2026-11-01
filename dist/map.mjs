@@ -19,7 +19,7 @@ var translations$1 = {
 }
 };
 
-var version$1 = "1.7.0";
+var version$1 = "1.8.0";
 
 /**
  * This is an extension for Xcratch.
@@ -740,6 +740,9 @@ var en = {
 	"map.centerLines.off": "none",
 	"map.centerLines.cross": "cross",
 	"map.centerLines.on": "lines",
+	"map.setMouseControl": "mouse control of the map [MODE]",
+	"map.mouseControl.off": "off",
+	"map.mouseControl.on": "on",
 	"map.addCenterPin": "drop a [COLOR] pin at the map center",
 	"map.plotData": "drop pins from data [DATA]",
 	"map.setLastPinName": "set the name of the last pin to [NAME]",
@@ -788,6 +791,9 @@ var ja = {
 	"map.centerLines.off": "なし",
 	"map.centerLines.cross": "十字",
 	"map.centerLines.on": "線",
+	"map.setMouseControl": "地図をマウスで動かせるように [MODE]",
+	"map.mouseControl.off": "しない",
+	"map.mouseControl.on": "する",
 	"map.addCenterPin": "地図の中心に [COLOR] 色のピンを立てる",
 	"map.plotData": "データ [DATA] のピンを立てる",
 	"map.setLastPinName": "直前のピンの名前を [NAME] にする",
@@ -839,6 +845,9 @@ var translations = {
 	"map.centerLines.off": "なし",
 	"map.centerLines.cross": "じゅうじ",
 	"map.centerLines.on": "せん",
+	"map.setMouseControl": "ちずをマウスでうごかせるように [MODE]",
+	"map.mouseControl.off": "しない",
+	"map.mouseControl.on": "する",
 	"map.addCenterPin": "ちずのちゅうしんに [COLOR] いろのピンをたてる",
 	"map.plotData": "データ [DATA] のピンをたてる",
 	"map.setLastPinName": "ちょくぜんのピンのなまえを [NAME] にする",
@@ -1022,6 +1031,16 @@ var ExtensionBlocks = /*#__PURE__*/function () {
 
     // Map layer transparency (ghost effect: 0 = opaque, 100 = invisible).
     this._opacity = 0;
+
+    // Direct mouse/touch control (drag = pan, wheel / pinch = zoom).
+    // Always active in the editor, like dragging sprites; in full screen
+    // and in the player only when the project turns this on.
+    this._mouseControl = false;
+    this._pointers = new Map(); // pointerId -> {x, y} in stage px
+    this._gesture = null; // snapshot taken when the pointer set changes
+    this._wheelAccum = 0;
+    this._redrawScheduled = false;
+    this._listenersAttached = false;
 
     // Renderer objects (created lazily on first map display).
     this._skinId = null;
@@ -1479,6 +1498,21 @@ var ExtensionBlocks = /*#__PURE__*/function () {
               defaultValue: 'off'
             }
           }
+        }, {
+          opcode: 'setMouseControl',
+          blockType: BlockType.COMMAND,
+          text: formatMessage({
+            id: 'map.setMouseControl',
+            default: '地図をマウスで動かせるように [MODE]',
+            description: 'allow dragging / wheel zooming the map in full screen and player'
+          }),
+          arguments: {
+            MODE: {
+              type: ArgumentType.STRING,
+              menu: 'mouseControlMenu',
+              defaultValue: 'on'
+            }
+          }
         }],
         menus: {
           pinColorMenu: {
@@ -1496,6 +1530,10 @@ var ExtensionBlocks = /*#__PURE__*/function () {
           centerLinesMenu: {
             acceptReporters: false,
             items: 'getCenterLinesMenu'
+          },
+          mouseControlMenu: {
+            acceptReporters: false,
+            items: 'getMouseControlMenu'
           }
         }
       };
@@ -1551,6 +1589,29 @@ var ExtensionBlocks = /*#__PURE__*/function () {
           id: 'map.centerLines.off',
           default: 'なし',
           description: 'no center mark'
+        }),
+        value: 'off'
+      }];
+    }
+
+    /**
+     * @returns {Array} - items for the mouse control menu (する / しない).
+     */
+  }, {
+    key: "getMouseControlMenu",
+    value: function getMouseControlMenu() {
+      return [{
+        text: formatMessage({
+          id: 'map.mouseControl.on',
+          default: 'する',
+          description: 'allow mouse control'
+        }),
+        value: 'on'
+      }, {
+        text: formatMessage({
+          id: 'map.mouseControl.off',
+          default: 'しない',
+          description: 'no mouse control'
         }),
         value: 'off'
       }];
@@ -1741,7 +1802,306 @@ var ExtensionBlocks = /*#__PURE__*/function () {
       this._drawableId = renderer.createDrawable('background');
       renderer.updateDrawableSkinId(this._drawableId, this._skinId);
       renderer.updateDrawableEffect(this._drawableId, 'ghost', this._opacity);
+      this._attachPointerListeners(renderer.canvas);
       return true;
+    }
+
+    // ---- Direct mouse / touch control ----
+
+    /**
+     * Listen on the stage canvas for drag (pan), wheel (zoom) and pinch
+     * (zoom) gestures. Pointer events cover mouse and touch alike; the stage
+     * already sets touch-action: none so the browser leaves touches to us.
+     * @param {HTMLCanvasElement} canvas - the renderer's stage canvas.
+     */
+  }, {
+    key: "_attachPointerListeners",
+    value: function _attachPointerListeners(canvas) {
+      var _this = this;
+      if (this._listenersAttached || !canvas || typeof canvas.addEventListener !== 'function') {
+        return;
+      }
+      this._listenersAttached = true;
+      this._stageCanvas = canvas;
+      canvas.addEventListener('pointerdown', function (e) {
+        return _this._onPointerDown(e);
+      });
+      // Move/up go on the document so a drag that leaves the stage still ends.
+      document.addEventListener('pointermove', function (e) {
+        return _this._onPointerMove(e);
+      });
+      document.addEventListener('pointerup', function (e) {
+        return _this._onPointerUp(e);
+      });
+      document.addEventListener('pointercancel', function (e) {
+        return _this._onPointerUp(e);
+      });
+      canvas.addEventListener('wheel', function (e) {
+        return _this._onWheel(e);
+      }, {
+        passive: false
+      });
+    }
+
+    /**
+     * Whether the editor (not full screen, not the player) is showing.
+     * scratch-gui lets you drag any sprite in this state, and the map
+     * follows the same rule. The GUI keeps this in its own state, so it is
+     * read from the page: the blocks workspace exists only in the editor,
+     * and full screen adds a "full-screen" class around the stage.
+     * @returns {boolean} - true in the editor.
+     */
+  }, {
+    key: "_isEditorMode",
+    value: function _isEditorMode() {
+      if (typeof document === 'undefined') return false;
+      var canvas = this._stageCanvas;
+      if (canvas && typeof canvas.closest === 'function' && canvas.closest('[class*="full-screen"]')) {
+        return false;
+      }
+      return Boolean(document.querySelector('.injectionDiv'));
+    }
+
+    /**
+     * @returns {boolean} - whether drag / wheel / pinch should move the map now.
+     */
+  }, {
+    key: "_mouseControlActive",
+    value: function _mouseControlActive() {
+      return this._mouseControl || this._isEditorMode();
+    }
+
+    /**
+     * Stage-pixel position of a pointer event (0..480, 0..360).
+     * @param {PointerEvent|WheelEvent} e - the event.
+     * @returns {{x: number, y: number, cssX: number, cssY: number}} - stage px and
+     *   CSS px relative to the canvas (the latter is what renderer.pick wants).
+     */
+  }, {
+    key: "_eventStagePos",
+    value: function _eventStagePos(e) {
+      var rect = this._stageCanvas.getBoundingClientRect();
+      var cssX = e.clientX - rect.left;
+      var cssY = e.clientY - rect.top;
+      var scale = rect.width > 0 ? STAGE_WIDTH / rect.width : 1;
+      return {
+        x: cssX * scale,
+        y: cssY * scale,
+        cssX: cssX,
+        cssY: cssY
+      };
+    }
+
+    /**
+     * Whether a sprite under the pointer should take the drag instead of
+     * the map: any sprite in the editor, draggable sprites elsewhere (the
+     * same rule scratch-gui applies to sprite dragging).
+     * @param {number} cssX - CSS px from the canvas left edge.
+     * @param {number} cssY - CSS px from the canvas top edge.
+     * @returns {boolean} - true when the map must not start a drag.
+     */
+  }, {
+    key: "_spriteTakesDrag",
+    value: function _spriteTakesDrag(cssX, cssY) {
+      var renderer = this.runtime.renderer;
+      if (!renderer || typeof renderer.pick !== 'function') return false;
+      var drawableId = renderer.pick(cssX, cssY);
+      if (drawableId === null || typeof drawableId === 'undefined' || drawableId < 0) return false;
+      if (drawableId === this._drawableId) return false;
+      var target = typeof this.runtime.getTargetByDrawableId === 'function' ? this.runtime.getTargetByDrawableId(drawableId) : null;
+      if (!target || target.isStage) return false;
+      return this._isEditorMode() || Boolean(target.draggable);
+    }
+  }, {
+    key: "_onPointerDown",
+    value: function _onPointerDown(e) {
+      if (!this._mouseControlActive()) return;
+      if (e.pointerType === 'mouse' && e.button !== 0) return;
+      var pos = this._eventStagePos(e);
+      if (this._pointers.size === 0 && this._spriteTakesDrag(pos.cssX, pos.cssY)) return;
+      this._pointerDown(e.pointerId, pos.x, pos.y);
+    }
+  }, {
+    key: "_onPointerMove",
+    value: function _onPointerMove(e) {
+      if (!this._pointers.has(e.pointerId)) return;
+      var pos = this._eventStagePos(e);
+      this._pointerMove(e.pointerId, pos.x, pos.y);
+      e.preventDefault();
+    }
+  }, {
+    key: "_onPointerUp",
+    value: function _onPointerUp(e) {
+      this._pointerUp(e.pointerId);
+    }
+  }, {
+    key: "_onWheel",
+    value: function _onWheel(e) {
+      if (!this._mouseControlActive()) return;
+      e.preventDefault();
+      var pos = this._eventStagePos(e);
+      // deltaMode 1 = lines (Firefox); treat a line as ~16px.
+      var delta = e.deltaMode === 1 ? e.deltaY * 16 : e.deltaY;
+      this._wheel(delta, pos.x, pos.y);
+    }
+
+    /**
+     * Start tracking a pointer (DOM-free; tests call this directly).
+     * @param {number|string} id - pointer id.
+     * @param {number} x - stage x.
+     * @param {number} y - stage y.
+     */
+  }, {
+    key: "_pointerDown",
+    value: function _pointerDown(id, x, y) {
+      this._pointers.set(id, {
+        x: x,
+        y: y
+      });
+      this._beginGesture();
+    }
+
+    /**
+     * Move a tracked pointer: one pointer pans, two pointers pan + pinch-zoom.
+     * The map point that was under the pointers' midpoint when the gesture
+     * began stays under the current midpoint.
+     * @param {number|string} id - pointer id.
+     * @param {number} x - stage x.
+     * @param {number} y - stage y.
+     */
+  }, {
+    key: "_pointerMove",
+    value: function _pointerMove(id, x, y) {
+      if (!this._pointers.has(id)) return;
+      this._pointers.set(id, {
+        x: x,
+        y: y
+      });
+      var g = this._gesture;
+      if (!g) return;
+      var pts = Array.from(this._pointers.values());
+      var mid = this._midpoint(pts);
+      var newZoom = g.zoom;
+      if (pts.length >= 2 && g.dist > 0) {
+        var dist = this._distance(pts[0], pts[1]);
+        newZoom = this._clampZoom(Math.round(g.zoom + Math.log2(dist / g.dist)));
+      }
+      var scale = Math.pow(2, newZoom - g.zoom);
+      // World px (at the new zoom) of the map point that was under the start midpoint.
+      var anchorX = (g.centerX + g.x - STAGE_WIDTH / 2) * scale;
+      var anchorY = (g.centerY + g.y - STAGE_HEIGHT / 2) * scale;
+      this.centerLng = this._worldXToLng(anchorX - (mid.x - STAGE_WIDTH / 2), newZoom);
+      this.centerLat = this._worldYToLat(anchorY - (mid.y - STAGE_HEIGHT / 2), newZoom);
+      this.zoom = newZoom;
+      this._scheduleRedraw();
+    }
+
+    /**
+     * Stop tracking a pointer; a remaining pointer continues as a fresh gesture.
+     * @param {number|string} id - pointer id.
+     */
+  }, {
+    key: "_pointerUp",
+    value: function _pointerUp(id) {
+      if (!this._pointers.delete(id)) return;
+      if (this._pointers.size > 0) {
+        this._beginGesture();
+      } else {
+        this._gesture = null;
+      }
+    }
+
+    /**
+     * Wheel input: one zoom step per ~40px of accumulated scroll, zooming
+     * around the pointer. Wheel up (negative delta) zooms in.
+     * @param {number} deltaY - wheel delta in px.
+     * @param {number} x - stage x of the pointer.
+     * @param {number} y - stage y of the pointer.
+     */
+  }, {
+    key: "_wheel",
+    value: function _wheel(deltaY, x, y) {
+      if (Math.sign(deltaY) !== Math.sign(this._wheelAccum)) {
+        this._wheelAccum = 0;
+      }
+      this._wheelAccum += deltaY;
+      var STEP = 40;
+      if (Math.abs(this._wheelAccum) < STEP) return;
+      var direction = this._wheelAccum < 0 ? 1 : -1;
+      this._wheelAccum = 0;
+      this._zoomAt(this._clampZoom(this.zoom + direction), x, y);
+    }
+
+    /**
+     * Change the zoom keeping the map point at stage (x, y) in place.
+     * @param {number} newZoom - target zoom.
+     * @param {number} x - stage x of the fixed point.
+     * @param {number} y - stage y of the fixed point.
+     */
+  }, {
+    key: "_zoomAt",
+    value: function _zoomAt(newZoom, x, y) {
+      if (newZoom === this.zoom) return;
+      var z = this.zoom;
+      var scale = Math.pow(2, newZoom - z);
+      var anchorX = (this._lngToWorldX(this.centerLng, z) + x - STAGE_WIDTH / 2) * scale;
+      var anchorY = (this._latToWorldY(this.centerLat, z) + y - STAGE_HEIGHT / 2) * scale;
+      this.centerLng = this._worldXToLng(anchorX - (x - STAGE_WIDTH / 2), newZoom);
+      this.centerLat = this._worldYToLat(anchorY - (y - STAGE_HEIGHT / 2), newZoom);
+      this.zoom = newZoom;
+      this._scheduleRedraw();
+    }
+
+    // Snapshot the view and the pointers so moves are relative to it.
+  }, {
+    key: "_beginGesture",
+    value: function _beginGesture() {
+      var pts = Array.from(this._pointers.values());
+      var mid = this._midpoint(pts);
+      this._gesture = {
+        zoom: this.zoom,
+        centerX: this._lngToWorldX(this.centerLng, this.zoom),
+        centerY: this._latToWorldY(this.centerLat, this.zoom),
+        x: mid.x,
+        y: mid.y,
+        dist: pts.length >= 2 ? this._distance(pts[0], pts[1]) : 0
+      };
+    }
+  }, {
+    key: "_midpoint",
+    value: function _midpoint(pts) {
+      var n = pts.length || 1;
+      return {
+        x: pts.reduce(function (sum, p) {
+          return sum + p.x;
+        }, 0) / n,
+        y: pts.reduce(function (sum, p) {
+          return sum + p.y;
+        }, 0) / n
+      };
+    }
+  }, {
+    key: "_distance",
+    value: function _distance(a, b) {
+      return Math.hypot(a.x - b.x, a.y - b.y);
+    }
+
+    // Collapse a burst of gesture updates into one redraw per frame.
+  }, {
+    key: "_scheduleRedraw",
+    value: function _scheduleRedraw() {
+      var _this2 = this;
+      if (this._redrawScheduled) return;
+      this._redrawScheduled = true;
+      var run = function run() {
+        _this2._redrawScheduled = false;
+        _this2._redraw();
+      };
+      if (typeof requestAnimationFrame === 'function') {
+        requestAnimationFrame(run);
+      } else {
+        run();
+      }
     }
 
     /**
@@ -2007,7 +2367,7 @@ var ExtensionBlocks = /*#__PURE__*/function () {
   }, {
     key: "_redraw",
     value: function _redraw() {
-      var _this = this;
+      var _this3 = this;
       var renderZoom = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : this.zoom;
       if (!this._ensureSkin()) return Promise.resolve();
       var token = ++this._redrawToken;
@@ -2032,7 +2392,7 @@ var ExtensionBlocks = /*#__PURE__*/function () {
           var url = "".concat(tileBase, "/").concat(tileZoom, "/").concat(wrappedX, "/").concat(ty, ".png");
           var dx = tx * tilePx - left;
           var dy = ty * tilePx - top;
-          jobs.push(_this._loadTile(url).then(function (img) {
+          jobs.push(_this3._loadTile(url).then(function (img) {
             return {
               img: img,
               dx: dx,
@@ -2048,8 +2408,8 @@ var ExtensionBlocks = /*#__PURE__*/function () {
       var drawPx = Math.ceil(tilePx) + 1;
       return Promise.all(jobs).then(function (tiles) {
         // Ignore if a newer redraw started while tiles were loading.
-        if (token !== _this._redrawToken) return;
-        var ctx = _this._ctx;
+        if (token !== _this3._redrawToken) return;
+        var ctx = _this3._ctx;
         ctx.fillStyle = '#e8e8e8';
         ctx.fillRect(0, 0, STAGE_WIDTH, STAGE_HEIGHT);
         var _iterator = _createForOfIteratorHelper(tiles),
@@ -2066,11 +2426,11 @@ var ExtensionBlocks = /*#__PURE__*/function () {
         } finally {
           _iterator.f();
         }
-        _this._drawMarkers(ctx, zoom, left, top);
-        _this._drawCenterMark(ctx);
-        _this._drawAttribution(ctx);
-        _this.runtime.renderer.updateBitmapSkin(_this._skinId, _this._canvas, 1);
-        _this.runtime.requestRedraw();
+        _this3._drawMarkers(ctx, zoom, left, top);
+        _this3._drawCenterMark(ctx);
+        _this3._drawAttribution(ctx);
+        _this3.runtime.renderer.updateBitmapSkin(_this3._skinId, _this3._canvas, 1);
+        _this3.runtime.requestRedraw();
       });
     }
 
@@ -2115,7 +2475,7 @@ var ExtensionBlocks = /*#__PURE__*/function () {
   }, {
     key: "showMapByKeyword",
     value: function showMapByKeyword(args) {
-      var _this2 = this;
+      var _this4 = this;
       var keyword = Cast.toString(args.KEYWORD).trim();
       if (keyword === '' || typeof fetch === 'undefined') {
         return;
@@ -2124,14 +2484,14 @@ var ExtensionBlocks = /*#__PURE__*/function () {
         if (result) {
           return result;
         }
-        return _this2._geocodeGsiAddress(keyword);
+        return _this4._geocodeGsiAddress(keyword);
       }).then(function (result) {
         if (!result) {
           return;
         }
-        _this2.centerLat = result.lat;
-        _this2.centerLng = result.lng;
-        return _this2._redraw();
+        _this4.centerLat = result.lat;
+        _this4.centerLng = result.lng;
+        return _this4._redraw();
       }).catch(function () {});
     }
 
@@ -2299,9 +2659,9 @@ var ExtensionBlocks = /*#__PURE__*/function () {
   }, {
     key: "addressAt",
     value: function addressAt(args) {
-      var _this3 = this;
+      var _this5 = this;
       return this._reverseGeocode(Cast.toNumber(args.LAT), Cast.toNumber(args.LNG)).then(function (address) {
-        return _this3._formatAddress(address);
+        return _this5._formatAddress(address);
       });
     }
 
@@ -2401,7 +2761,7 @@ var ExtensionBlocks = /*#__PURE__*/function () {
   }, {
     key: "moveByDistance",
     value: function moveByDistance(args) {
-      var _this4 = this;
+      var _this6 = this;
       var bearing = Cast.toNumber(args.DEGREES);
       var distance = Cast.toNumber(args.DISTANCE);
       var seconds = Cast.toNumber(args.SECONDS);
@@ -2419,10 +2779,10 @@ var ExtensionBlocks = /*#__PURE__*/function () {
       var startTime = Date.now();
       var _animate = function animate() {
         var t = Math.min(1, (Date.now() - startTime) / totalMs);
-        var dest = _this4._destinationPoint(startLat, startLng, bearing, distance * t);
-        _this4.centerLat = dest.lat;
-        _this4.centerLng = dest.lng;
-        return Promise.resolve(_this4._redraw()).then(function () {
+        var dest = _this6._destinationPoint(startLat, startLng, bearing, distance * t);
+        _this6.centerLat = dest.lat;
+        _this6.centerLng = dest.lng;
+        return Promise.resolve(_this6._redraw()).then(function () {
           if (t >= 1) return;
           return new Promise(function (resolve) {
             return setTimeout(resolve, 24);
@@ -2491,6 +2851,11 @@ var ExtensionBlocks = /*#__PURE__*/function () {
         this._centerMark = 'line';
       }
       return this._redraw();
+    }
+  }, {
+    key: "setMouseControl",
+    value: function setMouseControl(args) {
+      this._mouseControl = Cast.toString(args.MODE) === 'on';
     }
   }, {
     key: "addCenterPin",
@@ -2647,7 +3012,7 @@ var ExtensionBlocks = /*#__PURE__*/function () {
   }, {
     key: "fitToPoints",
     value: function fitToPoints() {
-      var _this5 = this;
+      var _this7 = this;
       if (this._points.length === 0) return;
       if (this._points.length === 1) {
         this.centerLat = this._points[0].lat;
@@ -2664,13 +3029,13 @@ var ExtensionBlocks = /*#__PURE__*/function () {
         var maxX = -Infinity;
         var minY = Infinity;
         var maxY = -Infinity;
-        var _iterator4 = _createForOfIteratorHelper(_this5._points),
+        var _iterator4 = _createForOfIteratorHelper(_this7._points),
           _step4;
         try {
           for (_iterator4.s(); !(_step4 = _iterator4.n()).done;) {
             var p = _step4.value;
-            var wx = _this5._lngToWorldX(p.lng, zoom);
-            var wy = _this5._latToWorldY(p.lat, zoom);
+            var wx = _this7._lngToWorldX(p.lng, zoom);
+            var wy = _this7._latToWorldY(p.lat, zoom);
             if (wx < minX) minX = wx;
             if (wx > maxX) maxX = wx;
             if (wy < minY) minY = wy;
@@ -2716,7 +3081,7 @@ var ExtensionBlocks = /*#__PURE__*/function () {
   }, {
     key: "_getCurrentLocation",
     value: function _getCurrentLocation(maxAgeMs) {
-      var _this6 = this;
+      var _this8 = this;
       var cached = this._currentLocation;
       if (cached && Date.now() - cached.time < maxAgeMs) {
         return Promise.resolve(cached.lat === null ? null : {
@@ -2734,7 +3099,7 @@ var ExtensionBlocks = /*#__PURE__*/function () {
         navigator.geolocation.getCurrentPosition(function (position) {
           var lat = position.coords.latitude;
           var lng = position.coords.longitude;
-          _this6._currentLocation = {
+          _this8._currentLocation = {
             lat: lat,
             lng: lng,
             time: Date.now()
@@ -2744,7 +3109,7 @@ var ExtensionBlocks = /*#__PURE__*/function () {
             lng: lng
           });
         }, function () {
-          _this6._currentLocation = {
+          _this8._currentLocation = {
             lat: null,
             lng: null,
             time: Date.now()
@@ -2756,7 +3121,7 @@ var ExtensionBlocks = /*#__PURE__*/function () {
           maximumAge: 0
         });
       }).then(function (result) {
-        _this6._currentLocationRequest = null;
+        _this8._currentLocationRequest = null;
         return result;
       });
       return this._currentLocationRequest;
@@ -2769,12 +3134,12 @@ var ExtensionBlocks = /*#__PURE__*/function () {
   }, {
     key: "showCurrentLocation",
     value: function showCurrentLocation() {
-      var _this7 = this;
+      var _this9 = this;
       return this._getCurrentLocation(0).then(function (location) {
         if (!location) return;
-        _this7.centerLat = location.lat;
-        _this7.centerLng = location.lng;
-        return _this7._redraw();
+        _this9.centerLat = location.lat;
+        _this9.centerLng = location.lng;
+        return _this9._redraw();
       });
     }
 
@@ -2916,7 +3281,7 @@ var ExtensionBlocks = /*#__PURE__*/function () {
   }, {
     key: "scrollBetweenPins",
     value: function scrollBetweenPins(args) {
-      var _this8 = this;
+      var _this0 = this;
       var from = this._points[Cast.toNumber(args.FROM) - 1];
       var to = this._points[Cast.toNumber(args.TO) - 1];
       if (!from || !to) {
@@ -2931,16 +3296,16 @@ var ExtensionBlocks = /*#__PURE__*/function () {
       var delayMs = 24;
       var frame = function frame(t) {
         var p = path(t);
-        _this8.centerLng = _this8._worldXToLng(p.x, startZoom);
-        _this8.centerLat = _this8._worldYToLat(p.y, startZoom);
+        _this0.centerLng = _this0._worldXToLng(p.x, startZoom);
+        _this0.centerLat = _this0._worldYToLat(p.y, startZoom);
         // w = STAGE_WIDTH * 2^(startZoom - z)  ->  z = startZoom - log2(w/STAGE_WIDTH)
         var z = startZoom - Math.log(p.w / STAGE_WIDTH) / Math.LN2;
-        return Promise.resolve(_this8._redraw(Math.max(MIN_ZOOM, Math.min(maxZoom, z))));
+        return Promise.resolve(_this0._redraw(Math.max(MIN_ZOOM, Math.min(maxZoom, z))));
       };
       var _animate2 = function animate(i) {
         return frame(i / steps).then(function () {
           if (i >= steps) {
-            _this8.zoom = startZoom;
+            _this0.zoom = startZoom;
             return;
           }
           return new Promise(function (resolve) {
