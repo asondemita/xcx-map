@@ -19,7 +19,7 @@ var translations$1 = {
 }
 };
 
-var version$1 = "1.6.2";
+var version$1 = "1.7.0";
 
 /**
  * This is an extension for Xcratch.
@@ -754,6 +754,7 @@ var en = {
 	"map.pinDistance": "distance from pin [FROM] to pin [TO] (km)",
 	"map.mapLat": "center latitude",
 	"map.mapLng": "center longitude",
+	"map.mapZoom": "zoom",
 	"map.currentLat": "current latitude",
 	"map.currentLng": "current longitude",
 	"map.showCurrentLocation": "show map of current location",
@@ -801,6 +802,7 @@ var ja = {
 	"map.pinDistance": "ピン番号 [FROM] からピン番号 [TO] までの距離(km)",
 	"map.mapLat": "中心の緯度",
 	"map.mapLng": "中心の経度",
+	"map.mapZoom": "ズーム",
 	"map.currentLat": "現在位置の緯度",
 	"map.currentLng": "現在位置の経度",
 	"map.showCurrentLocation": "現在位置の地図を表示する",
@@ -851,6 +853,7 @@ var translations = {
 	"map.pinDistance": "ピンばんごう [FROM] からピンばんごう [TO] までのきょり(km)",
 	"map.mapLat": "ちゅうしんのいど",
 	"map.mapLng": "ちゅうしんのけいど",
+	"map.mapZoom": "ズーム",
 	"map.currentLat": "げんざいちのいど",
 	"map.currentLng": "げんざいちのけいど",
 	"map.showCurrentLocation": "げんざいちのちずをひょうじする",
@@ -1327,6 +1330,14 @@ var ExtensionBlocks = /*#__PURE__*/function () {
             id: 'map.mapLng',
             default: '中心の経度',
             description: 'longitude of the map center'
+          })
+        }, {
+          opcode: 'mapZoom',
+          blockType: BlockType.REPORTER,
+          text: formatMessage({
+            id: 'map.mapZoom',
+            default: 'ズーム',
+            description: 'current zoom level of the map'
           })
         }, {
           opcode: 'currentLat',
@@ -2086,9 +2097,12 @@ var ExtensionBlocks = /*#__PURE__*/function () {
     }
 
     /**
-     * Geocode a free keyword and show its map.
-     * Place names (施設名・駅名) are resolved with OpenStreetMap Nominatim,
-     * fitting the result's bounding box. Nominatim cannot resolve most
+     * Geocode a free keyword and center the map on it. The zoom is kept, like
+     * showMapAt / showPinMap, so searching one place after another while
+     * dropping pins never changes the scale; use the zoom blocks to zoom out
+     * for a wide area such as a prefecture.
+     * Place names (施設名・駅名) are resolved with OpenStreetMap Nominatim.
+     * Nominatim cannot resolve most
      * Japanese street addresses (番地付き住所), so when it returns nothing
      * the keyword is retried against the GSI address search API
      * (国土地理院 住所検索), which is strong on addresses but weak on place
@@ -2115,14 +2129,8 @@ var ExtensionBlocks = /*#__PURE__*/function () {
         if (!result) {
           return;
         }
-        var box = result.boundingbox; // [south, north, west, east]
-        if (box && box.length === 4) {
-          _this2._fitToBounds(Number(box[0]), Number(box[1]), Number(box[2]), Number(box[3]));
-        } else {
-          _this2.centerLat = result.lat;
-          _this2.centerLng = result.lng;
-          _this2.zoom = _this2._clampZoom(result.zoom);
-        }
+        _this2.centerLat = result.lat;
+        _this2.centerLng = result.lng;
         return _this2._redraw();
       }).catch(function () {});
     }
@@ -2130,7 +2138,7 @@ var ExtensionBlocks = /*#__PURE__*/function () {
     /**
      * Look a keyword up with OpenStreetMap Nominatim.
      * @param {string} keyword - place name or address.
-     * @returns {Promise<{lat: number, lng: number, zoom: number, boundingbox: ?Array}|null>}
+     * @returns {Promise<{lat: number, lng: number}|null>}
      *   best match, or null when nothing was found or the request failed.
      */
   }, {
@@ -2155,9 +2163,7 @@ var ExtensionBlocks = /*#__PURE__*/function () {
         }
         return {
           lat: lat,
-          lng: lng,
-          zoom: 15,
-          boundingbox: result.boundingbox
+          lng: lng
         };
       }).catch(function () {
         return null;
@@ -2167,10 +2173,9 @@ var ExtensionBlocks = /*#__PURE__*/function () {
     /**
      * Look an address up with the GSI address search API (国土地理院 住所検索).
      * The API answers with a GeoJSON feature list; the first feature is the
-     * best match. It resolves down to the block (番) level, so there is no
-     * bounding box and the map is shown at a fixed street-level zoom.
+     * best match. It resolves down to the block (番) level.
      * @param {string} keyword - address such as 東京都港区芝公園4-2-8.
-     * @returns {Promise<{lat: number, lng: number, zoom: number, boundingbox: null}|null>}
+     * @returns {Promise<{lat: number, lng: number}|null>}
      *   best match, or null when nothing was found or the request failed.
      */
   }, {
@@ -2198,9 +2203,7 @@ var ExtensionBlocks = /*#__PURE__*/function () {
         }
         return {
           lat: lat,
-          lng: lng,
-          zoom: 16,
-          boundingbox: null
+          lng: lng
         };
       }).catch(function () {
         return null;
@@ -2448,6 +2451,11 @@ var ExtensionBlocks = /*#__PURE__*/function () {
     value: function mapLng() {
       return this.centerLng;
     }
+  }, {
+    key: "mapZoom",
+    value: function mapZoom() {
+      return this.zoom;
+    }
 
     // ---- Blocks: fit to points ----
   }, {
@@ -2694,48 +2702,6 @@ var ExtensionBlocks = /*#__PURE__*/function () {
       this.centerLat = this._worldYToLat((b.minY + b.maxY) / 2, fitZoom);
       this.zoom = fitZoom;
       return this._redraw();
-    }
-
-    /**
-     * Largest integer zoom at which a lat/lng box fits the stage (with margin).
-     * @param {number} south - southern latitude.
-     * @param {number} north - northern latitude.
-     * @param {number} west - western longitude.
-     * @param {number} east - eastern longitude.
-     * @returns {number} - fitting integer zoom.
-     */
-  }, {
-    key: "_fitZoomForBounds",
-    value: function _fitZoomForBounds(south, north, west, east) {
-      var PADDING = 24;
-      var usableWidth = STAGE_WIDTH - PADDING * 2;
-      var usableHeight = STAGE_HEIGHT - PADDING * 2;
-      for (var z = this._maxZoom(); z >= MIN_ZOOM; z--) {
-        var w = Math.abs(this._lngToWorldX(east, z) - this._lngToWorldX(west, z));
-        var h = Math.abs(this._latToWorldY(south, z) - this._latToWorldY(north, z));
-        if (w <= usableWidth && h <= usableHeight) {
-          return z;
-        }
-      }
-      return MIN_ZOOM;
-    }
-
-    /**
-     * Center and zoom the map to fit a lat/lng bounding box.
-     * @param {number} south - southern latitude.
-     * @param {number} north - northern latitude.
-     * @param {number} west - western longitude.
-     * @param {number} east - eastern longitude.
-     */
-  }, {
-    key: "_fitToBounds",
-    value: function _fitToBounds(south, north, west, east) {
-      var fitZoom = this._fitZoomForBounds(south, north, west, east);
-      var cx = (this._lngToWorldX(west, fitZoom) + this._lngToWorldX(east, fitZoom)) / 2;
-      var cy = (this._latToWorldY(north, fitZoom) + this._latToWorldY(south, fitZoom)) / 2;
-      this.centerLng = this._worldXToLng(cx, fitZoom);
-      this.centerLat = this._worldYToLat(cy, fitZoom);
-      this.zoom = fitZoom;
     }
 
     // ---- Blocks: current location / distance ----
