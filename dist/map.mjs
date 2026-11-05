@@ -19,7 +19,7 @@ var translations$1 = {
 }
 };
 
-var version$1 = "1.8.1";
+var version$1 = "1.9.0";
 
 /**
  * This is an extension for Xcratch.
@@ -755,11 +755,9 @@ var en = {
 	"map.removePin": "remove pin [NUMBER]",
 	"map.scrollBetweenPins": "scroll from pin [FROM] to pin [TO]",
 	"map.pinDistance": "distance from pin [FROM] to pin [TO] (km)",
-	"map.mapLat": "center latitude",
-	"map.mapLng": "center longitude",
+	"map.mapLat": "latitude",
+	"map.mapLng": "longitude",
 	"map.mapZoom": "zoom",
-	"map.currentLat": "current latitude",
-	"map.currentLng": "current longitude",
 	"map.showCurrentLocation": "show map of current location",
 	"map.distance": "distance from latitude [LAT1] longitude [LNG1] to latitude [LAT2] longitude [LNG2] (km)",
 	"map.addressAt": "address at latitude [LAT] longitude [LNG]",
@@ -806,11 +804,9 @@ var ja = {
 	"map.removePin": "ピン番号 [NUMBER] を消す",
 	"map.scrollBetweenPins": "ピン番号 [FROM] からピン番号 [TO] へスクロールする",
 	"map.pinDistance": "ピン番号 [FROM] からピン番号 [TO] までの距離(km)",
-	"map.mapLat": "中心の緯度",
-	"map.mapLng": "中心の経度",
+	"map.mapLat": "緯度",
+	"map.mapLng": "経度",
 	"map.mapZoom": "ズーム",
-	"map.currentLat": "現在位置の緯度",
-	"map.currentLng": "現在位置の経度",
 	"map.showCurrentLocation": "現在位置の地図を表示する",
 	"map.distance": "緯度 [LAT1] 経度 [LNG1] から 緯度 [LAT2] 経度 [LNG2] までの距離(km)",
 	"map.addressAt": "緯度 [LAT] 経度 [LNG] の住所",
@@ -860,11 +856,9 @@ var translations = {
 	"map.removePin": "ピンばんごう [NUMBER] をけす",
 	"map.scrollBetweenPins": "ピンばんごう [FROM] からピンばんごう [TO] へスクロールする",
 	"map.pinDistance": "ピンばんごう [FROM] からピンばんごう [TO] までのきょり(km)",
-	"map.mapLat": "ちゅうしんのいど",
-	"map.mapLng": "ちゅうしんのけいど",
+	"map.mapLat": "いど",
+	"map.mapLng": "けいど",
 	"map.mapZoom": "ズーム",
-	"map.currentLat": "げんざいちのいど",
-	"map.currentLng": "げんざいちのけいど",
 	"map.showCurrentLocation": "げんざいちのちずをひょうじする",
 	"map.distance": "いど [LAT1] けいど [LNG1] から いど [LAT2] けいど [LNG2] までのきょり(km)",
 	"map.addressAt": "いど [LAT] けいど [LNG] のじゅうしょ",
@@ -953,13 +947,6 @@ var DEFAULT_TILE_TYPE = 'osm';
  * @type {number}
  */
 var MERCATOR_MAX_LAT = 85.05112878;
-
-/**
- * How long (ms) a device position from the Geolocation API is reused by the
- * "current latitude/longitude" reporters before asking the device again.
- * @type {number}
- */
-var CURRENT_LOCATION_CACHE_MS = 5000;
 
 /**
  * Geolocation request timeout in milliseconds.
@@ -1053,10 +1040,6 @@ var ExtensionBlocks = /*#__PURE__*/function () {
 
     // Token to discard results from out-of-date redraws.
     this._redrawToken = 0;
-
-    // Last device position from the Geolocation API:
-    // {lat, lng, time} on success, {lat: null, lng: null, time} on failure.
-    this._currentLocation = null;
 
     // In-flight geolocation request, shared by concurrent callers.
     this._currentLocationRequest = null;
@@ -1339,7 +1322,7 @@ var ExtensionBlocks = /*#__PURE__*/function () {
           blockType: BlockType.REPORTER,
           text: formatMessage({
             id: 'map.mapLat',
-            default: '中心の緯度',
+            default: '緯度',
             description: 'latitude of the map center'
           })
         }, {
@@ -1347,7 +1330,7 @@ var ExtensionBlocks = /*#__PURE__*/function () {
           blockType: BlockType.REPORTER,
           text: formatMessage({
             id: 'map.mapLng',
-            default: '中心の経度',
+            default: '経度',
             description: 'longitude of the map center'
           })
         }, {
@@ -1357,22 +1340,6 @@ var ExtensionBlocks = /*#__PURE__*/function () {
             id: 'map.mapZoom',
             default: 'ズーム',
             description: 'current zoom level of the map'
-          })
-        }, {
-          opcode: 'currentLat',
-          blockType: BlockType.REPORTER,
-          text: formatMessage({
-            id: 'map.currentLat',
-            default: '現在位置の緯度',
-            description: 'latitude of the device location'
-          })
-        }, {
-          opcode: 'currentLng',
-          blockType: BlockType.REPORTER,
-          text: formatMessage({
-            id: 'map.currentLng',
-            default: '現在位置の経度',
-            description: 'longitude of the device location'
           })
         }, {
           opcode: 'pinDistance',
@@ -3075,22 +3042,13 @@ var ExtensionBlocks = /*#__PURE__*/function () {
 
     /**
      * Get the device's position from the Geolocation API.
-     * Concurrent callers share one request, and a result (success or failure)
-     * is reused while it is younger than maxAgeMs.
-     * @param {number} maxAgeMs - accept a cached result up to this age (0 = always ask).
+     * Concurrent callers share one request.
      * @returns {Promise<{lat: number, lng: number}|null>} - position, or null on failure.
      */
   }, {
     key: "_getCurrentLocation",
-    value: function _getCurrentLocation(maxAgeMs) {
+    value: function _getCurrentLocation() {
       var _this8 = this;
-      var cached = this._currentLocation;
-      if (cached && Date.now() - cached.time < maxAgeMs) {
-        return Promise.resolve(cached.lat === null ? null : {
-          lat: cached.lat,
-          lng: cached.lng
-        });
-      }
       if (this._currentLocationRequest) {
         return this._currentLocationRequest;
       }
@@ -3099,24 +3057,12 @@ var ExtensionBlocks = /*#__PURE__*/function () {
       }
       this._currentLocationRequest = new Promise(function (resolve) {
         navigator.geolocation.getCurrentPosition(function (position) {
-          var lat = position.coords.latitude;
-          var lng = position.coords.longitude;
-          _this8._currentLocation = {
-            lat: lat,
-            lng: lng,
-            time: Date.now()
-          };
-          resolve({
-            lat: lat,
-            lng: lng
+          return resolve({
+            lat: position.coords.latitude,
+            lng: position.coords.longitude
           });
         }, function () {
-          _this8._currentLocation = {
-            lat: null,
-            lng: null,
-            time: Date.now()
-          };
-          resolve(null);
+          return resolve(null);
         }, {
           enableHighAccuracy: true,
           timeout: GEOLOCATION_TIMEOUT_MS,
@@ -3137,35 +3083,11 @@ var ExtensionBlocks = /*#__PURE__*/function () {
     key: "showCurrentLocation",
     value: function showCurrentLocation() {
       var _this9 = this;
-      return this._getCurrentLocation(0).then(function (location) {
+      return this._getCurrentLocation().then(function (location) {
         if (!location) return;
         _this9.centerLat = location.lat;
         _this9.centerLng = location.lng;
         return _this9._redraw();
-      });
-    }
-
-    /**
-     * Latitude of the device's current location (no map display needed).
-     * @returns {Promise<number|string>} - latitude, or '' when unavailable.
-     */
-  }, {
-    key: "currentLat",
-    value: function currentLat() {
-      return this._getCurrentLocation(CURRENT_LOCATION_CACHE_MS).then(function (location) {
-        return location ? location.lat : '';
-      });
-    }
-
-    /**
-     * Longitude of the device's current location (no map display needed).
-     * @returns {Promise<number|string>} - longitude, or '' when unavailable.
-     */
-  }, {
-    key: "currentLng",
-    value: function currentLng() {
-      return this._getCurrentLocation(CURRENT_LOCATION_CACHE_MS).then(function (location) {
-        return location ? location.lng : '';
       });
     }
 
