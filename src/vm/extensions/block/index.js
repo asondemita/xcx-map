@@ -75,13 +75,6 @@ const DEFAULT_TILE_TYPE = 'osm';
 const MERCATOR_MAX_LAT = 85.05112878;
 
 /**
- * How long (ms) a device position from the Geolocation API is reused by the
- * "current latitude/longitude" reporters before asking the device again.
- * @type {number}
- */
-const CURRENT_LOCATION_CACHE_MS = 5000;
-
-/**
  * Geolocation request timeout in milliseconds.
  * @type {number}
  */
@@ -229,10 +222,6 @@ class ExtensionBlocks {
 
         // Token to discard results from out-of-date redraws.
         this._redrawToken = 0;
-
-        // Last device position from the Geolocation API:
-        // {lat, lng, time} on success, {lat: null, lng: null, time} on failure.
-        this._currentLocation = null;
 
         // In-flight geolocation request, shared by concurrent callers.
         this._currentLocationRequest = null;
@@ -481,7 +470,7 @@ class ExtensionBlocks {
                     blockType: BlockType.REPORTER,
                     text: formatMessage({
                         id: 'map.mapLat',
-                        default: '中心の緯度',
+                        default: '緯度',
                         description: 'latitude of the map center'
                     })
                 },
@@ -490,7 +479,7 @@ class ExtensionBlocks {
                     blockType: BlockType.REPORTER,
                     text: formatMessage({
                         id: 'map.mapLng',
-                        default: '中心の経度',
+                        default: '経度',
                         description: 'longitude of the map center'
                     })
                 },
@@ -501,24 +490,6 @@ class ExtensionBlocks {
                         id: 'map.mapZoom',
                         default: 'ズーム',
                         description: 'current zoom level of the map'
-                    })
-                },
-                {
-                    opcode: 'currentLat',
-                    blockType: BlockType.REPORTER,
-                    text: formatMessage({
-                        id: 'map.currentLat',
-                        default: '現在位置の緯度',
-                        description: 'latitude of the device location'
-                    })
-                },
-                {
-                    opcode: 'currentLng',
-                    blockType: BlockType.REPORTER,
-                    text: formatMessage({
-                        id: 'map.currentLng',
-                        default: '現在位置の経度',
-                        description: 'longitude of the device location'
                     })
                 },
                 {
@@ -1917,16 +1888,10 @@ class ExtensionBlocks {
 
     /**
      * Get the device's position from the Geolocation API.
-     * Concurrent callers share one request, and a result (success or failure)
-     * is reused while it is younger than maxAgeMs.
-     * @param {number} maxAgeMs - accept a cached result up to this age (0 = always ask).
+     * Concurrent callers share one request.
      * @returns {Promise<{lat: number, lng: number}|null>} - position, or null on failure.
      */
-    _getCurrentLocation (maxAgeMs) {
-        const cached = this._currentLocation;
-        if (cached && (Date.now() - cached.time) < maxAgeMs) {
-            return Promise.resolve(cached.lat === null ? null : {lat: cached.lat, lng: cached.lng});
-        }
+    _getCurrentLocation () {
         if (this._currentLocationRequest) {
             return this._currentLocationRequest;
         }
@@ -1935,16 +1900,8 @@ class ExtensionBlocks {
         }
         this._currentLocationRequest = new Promise(resolve => {
             navigator.geolocation.getCurrentPosition(
-                position => {
-                    const lat = position.coords.latitude;
-                    const lng = position.coords.longitude;
-                    this._currentLocation = {lat, lng, time: Date.now()};
-                    resolve({lat, lng});
-                },
-                () => {
-                    this._currentLocation = {lat: null, lng: null, time: Date.now()};
-                    resolve(null);
-                },
+                position => resolve({lat: position.coords.latitude, lng: position.coords.longitude}),
+                () => resolve(null),
                 {enableHighAccuracy: true, timeout: GEOLOCATION_TIMEOUT_MS, maximumAge: 0}
             );
         }).then(result => {
@@ -1959,30 +1916,12 @@ class ExtensionBlocks {
      * @returns {Promise} - resolves when the map has been redrawn.
      */
     showCurrentLocation () {
-        return this._getCurrentLocation(0).then(location => {
+        return this._getCurrentLocation().then(location => {
             if (!location) return;
             this.centerLat = location.lat;
             this.centerLng = location.lng;
             return this._redraw();
         });
-    }
-
-    /**
-     * Latitude of the device's current location (no map display needed).
-     * @returns {Promise<number|string>} - latitude, or '' when unavailable.
-     */
-    currentLat () {
-        return this._getCurrentLocation(CURRENT_LOCATION_CACHE_MS)
-            .then(location => (location ? location.lat : ''));
-    }
-
-    /**
-     * Longitude of the device's current location (no map display needed).
-     * @returns {Promise<number|string>} - longitude, or '' when unavailable.
-     */
-    currentLng () {
-        return this._getCurrentLocation(CURRENT_LOCATION_CACHE_MS)
-            .then(location => (location ? location.lng : ''));
     }
 
     /**
