@@ -813,4 +813,124 @@ describe("blockClass", () => {
         expect(km).toBeGreaterThan(390);
         expect(km).toBeLessThan(420);
     });
+    describe("map language (vector map + Nominatim accept-language)", () => {
+        // Block whose skin and renderer are faked so _redraw can run in node.
+        const makeDrawable = () => {
+            const draws = [];
+            const texts = [];
+            const ctx = new Proxy({}, {
+                get: (_t, prop) => {
+                    if (prop === "drawImage") return img => draws.push(img);
+                    if (prop === "fillText") return t => texts.push(t);
+                    if (prop === "measureText") return () => ({ width: 20 });
+                    return () => {};
+                },
+                set: () => true
+            });
+            const block = new blockClass({
+                formatMessage: msg => msg.default,
+                renderer: { updateBitmapSkin: () => {} },
+                requestRedraw: () => {}
+            });
+            block._ensureSkin = () => true;
+            block._ctx = ctx;
+            block._loadTile = url => Promise.resolve({ url });
+            return { block, draws, texts };
+        };
+
+        afterEach(() => {
+            delete global.fetch;
+        });
+
+        test("menu lists local, ja, en, zh, ko; default local; unknown ignored", () => {
+            const block = new blockClass(runtime);
+            expect(block.getMapLanguageMenu().map(i => i.value)).toEqual(["local", "ja", "en", "zh", "ko"]);
+            expect(block._language).toBe("local");
+            block.setMapLanguage({ LANG: "en" });
+            expect(block._language).toBe("en");
+            block.setMapLanguage({ LANG: "xx" });
+            expect(block._language).toBe("en");
+        });
+
+        test("vector map only for the standard map with a chosen language", () => {
+            const block = new blockClass(runtime);
+            expect(block._useVectorMap()).toBe(false);
+            block.setMapLanguage({ LANG: "ja" });
+            expect(block._useVectorMap()).toBe(true);
+            block.setMapType({ TYPE: "pale" });
+            expect(block._useVectorMap()).toBe(false);
+            block.setMapType({ TYPE: "osm" });
+            block.setMapLanguage({ LANG: "local" });
+            expect(block._useVectorMap()).toBe(false);
+        });
+
+        test("_redraw draws the vector map canvas with its attribution", async () => {
+            const { block, draws, texts } = makeDrawable();
+            const canvas = { vector: true };
+            const calls = [];
+            block._vectorMap = {
+                setLanguage: lang => calls.push(["lang", lang]),
+                render: (lng, lat, zoom) => {
+                    calls.push(["render", lng, lat, zoom]);
+                    return Promise.resolve(canvas);
+                }
+            };
+            await block.setMapLanguage({ LANG: "en" });
+            expect(calls).toContainEqual(["lang", "en"]);
+            expect(calls).toContainEqual(["render", block.centerLng, block.centerLat, block.zoom]);
+            expect(draws).toEqual([canvas]);
+            expect(texts.some(t => t.includes("OpenFreeMap"))).toBe(true);
+        });
+
+        test("_redraw falls back to raster OSM tiles when the vector map fails", async () => {
+            const { block, draws, texts } = makeDrawable();
+            block._vectorMap = {
+                setLanguage: () => {},
+                render: () => Promise.resolve(null)
+            };
+            await block.setMapLanguage({ LANG: "ja" });
+            expect(draws.length).toBeGreaterThan(0);
+            expect(draws.every(img => img.url.startsWith("https://tile.openstreetmap.org/"))).toBe(true);
+            expect(texts).toContain("© OpenStreetMap contributors");
+        });
+
+        test("Nominatim accept-language follows the language (local = ja)", async () => {
+            const urls = [];
+            global.fetch = url => {
+                urls.push(url);
+                return Promise.resolve({ json: () => Promise.resolve([]) });
+            };
+            const block = new blockClass(runtime);
+            block._redraw = () => Promise.resolve();
+            await block._geocodeNominatim("Tokyo");
+            block._language = "en";
+            await block._geocodeNominatim("Tokyo");
+            expect(urls[0]).toContain("accept-language=ja");
+            expect(urls[1]).toContain("accept-language=en");
+        });
+
+        test("reverse geocode is cached per language", async () => {
+            const urls = [];
+            global.fetch = url => {
+                urls.push(url);
+                return Promise.resolve({ json: () => Promise.resolve({ address: { postcode: "100-0005" } }) });
+            };
+            const block = new blockClass(runtime);
+            await block.postcodeAt({ LAT: 35.68, LNG: 139.76 });
+            await block.postcodeAt({ LAT: 35.68, LNG: 139.76 });
+            block._language = "ko";
+            await block.postcodeAt({ LAT: 35.68, LNG: 139.76 });
+            expect(urls).toHaveLength(2);
+            expect(urls[1]).toContain("accept-language=ko");
+        });
+
+        test("a Japanese address in English is joined with commas, no prefecture fill-in", () => {
+            const block = new blockClass(runtime);
+            block._language = "en";
+            expect(block._formatAddress({
+                country_code: "jp", "ISO3166-2-lvl4": "JP-13",
+                city: "Chiyoda", quarter: "Marunouchi"
+            })).toBe("Chiyoda, Marunouchi");
+        });
+    });
 });
