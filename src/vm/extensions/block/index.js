@@ -3,6 +3,7 @@ import ArgumentType from '../../extension-support/argument-type';
 import Cast from '../../util/cast';
 import translations from './translations.json';
 import blockIcon from './block-icon.png';
+import {VectorMapRenderer, VECTOR_ATTRIBUTION} from './vector-map.js';
 
 /**
  * Formatter which is used for translation.
@@ -67,6 +68,15 @@ const TILE_TYPES = {
     }
 };
 const DEFAULT_TILE_TYPE = 'osm';
+
+/**
+ * Languages selectable for map labels and Nominatim results. 'local' keeps
+ * the raster OSM tiles (labels in each place's own language); any other
+ * language renders the standard map from vector tiles (see vector-map.js).
+ * @type {string[]}
+ */
+const MAP_LANGUAGES = ['local', 'ja', 'en', 'zh', 'ko'];
+const DEFAULT_MAP_LANGUAGE = 'local';
 
 /**
  * Limit of the Web Mercator projection in degrees.
@@ -186,6 +196,12 @@ class ExtensionBlocks {
 
         // Selected raster tile source (key of TILE_TYPES).
         this._mapType = DEFAULT_TILE_TYPE;
+
+        // Label language (one of MAP_LANGUAGES).
+        this._language = DEFAULT_MAP_LANGUAGE;
+
+        // Off-screen vector map, created on first use (see _useVectorMap).
+        this._vectorMap = null;
 
         // Points collected for "fit map to all points".
         this._points = [];
@@ -564,6 +580,22 @@ class ExtensionBlocks {
                     }
                 },
                 {
+                    opcode: 'setMapLanguage',
+                    blockType: BlockType.COMMAND,
+                    text: formatMessage({
+                        id: 'map.setMapLanguage',
+                        default: '地図の言語を [LANG] にする',
+                        description: 'set the language of map labels and addresses'
+                    }),
+                    arguments: {
+                        LANG: {
+                            type: ArgumentType.STRING,
+                            menu: 'mapLanguageMenu',
+                            defaultValue: 'ja'
+                        }
+                    }
+                },
+                {
                     opcode: 'setOpacity',
                     blockType: BlockType.COMMAND,
                     text: formatMessage({
@@ -616,6 +648,10 @@ class ExtensionBlocks {
                 mapTypeMenu: {
                     acceptReporters: false,
                     items: 'getMapTypeMenu'
+                },
+                mapLanguageMenu: {
+                    acceptReporters: false,
+                    items: 'getMapLanguageMenu'
                 },
                 pinNumberMenu: {
                     acceptReporters: false,
@@ -704,6 +740,23 @@ class ExtensionBlocks {
     }
 
     /**
+     * @returns {Array} - items for the map language menu. Language names are
+     * written in their own language so they read the same in every locale.
+     */
+    getMapLanguageMenu () {
+        return [
+            {
+                text: formatMessage({id: 'map.mapLanguage.local', default: '現地語', description: 'local names'}),
+                value: 'local'
+            },
+            {text: '日本語', value: 'ja'},
+            {text: 'English', value: 'en'},
+            {text: '中文', value: 'zh'},
+            {text: '한국어', value: 'ko'}
+        ];
+    }
+
+    /**
      * @returns {Array} - items for the pin color menu (label + hex value).
      */
     getPinColorMenu () {
@@ -783,6 +836,34 @@ class ExtensionBlocks {
     /**
      * @returns {number} - max integer zoom for the current tile type.
      */
+    /**
+     * Whether the map is drawn from vector tiles: only the OSM standard map
+     * with a chosen (non-local) label language.
+     * @returns {boolean} - true for the vector map.
+     */
+    _useVectorMap () {
+        return this._mapType === 'osm' && this._language !== 'local';
+    }
+
+    /**
+     * @returns {VectorMapRenderer} - the off-screen vector map (lazily made).
+     */
+    _getVectorMap () {
+        if (!this._vectorMap) {
+            this._vectorMap = new VectorMapRenderer(STAGE_WIDTH, STAGE_HEIGHT);
+        }
+        this._vectorMap.setLanguage(this._language);
+        return this._vectorMap;
+    }
+
+    /**
+     * @returns {string} - accept-language for Nominatim. 'local' keeps the
+     * long-standing Japanese results.
+     */
+    _nominatimLanguage () {
+        return this._language === 'local' ? 'ja' : this._language;
+    }
+
     _maxZoom () {
         return this._tileConfig().maxZoom;
     }
@@ -1081,10 +1162,6 @@ class ExtensionBlocks {
     }
 
     /**
-     * Draw the attribution required by the current tile source's policy.
-     * @param {CanvasRenderingContext2D} ctx - drawing context.
-     */
-    /**
      * Draw the center mark (see _centerMark) so the map center is visible
      * without a pin. Drawn over the pins and under the attribution label.
      * @param {CanvasRenderingContext2D} ctx - drawing context.
@@ -1155,8 +1232,13 @@ class ExtensionBlocks {
         ctx.restore();
     }
 
-    _drawAttribution (ctx) {
-        const label = this._tileConfig().attribution;
+    /**
+     * Draw the attribution required by the drawn map's usage policy.
+     * @param {CanvasRenderingContext2D} ctx - drawing context.
+     * @param {string} [label] - attribution text; defaults to the current
+     *   tile type's.
+     */
+    _drawAttribution (ctx, label = this._tileConfig().attribution) {
         ctx.font = '10px sans-serif';
         const padding = 3;
         const width = ctx.measureText(label).width + (padding * 2);
@@ -1306,10 +1388,40 @@ class ExtensionBlocks {
     _redraw (renderZoom = this.zoom) {
         if (!this._ensureSkin()) return Promise.resolve();
         const token = ++this._redrawToken;
-        const tileBase = this._tileConfig().base;
+        if (this._useVectorMap()) {
+            return this._getVectorMap()
+                .render(this.centerLng, this.centerLat, renderZoom)
+                .catch(() => null)
+                .then(mapCanvas => {
+                    if (token !== this._redrawToken) return;
+                    if (!mapCanvas) {
+                        // Vector map unavailable (no WebGL / CDN): raster.
+                        return this._redrawRaster(renderZoom, token, true);
+                    }
+                    const ctx = this._ctx;
+                    ctx.fillStyle = '#e8e8e8';
+                    ctx.fillRect(0, 0, STAGE_WIDTH, STAGE_HEIGHT);
+                    ctx.drawImage(mapCanvas, 0, 0, STAGE_WIDTH, STAGE_HEIGHT);
+                    this._finishRedraw(renderZoom, VECTOR_ATTRIBUTION);
+                });
+        }
+        return this._redrawRaster(renderZoom, token, false);
+    }
+
+    /**
+     * Draw the raster tiles of the current tile type, then the overlays.
+     * @param {number} renderZoom - fractional zoom to render at.
+     * @param {number} token - redraw token of this redraw.
+     * @param {boolean} osmFallback - draw OSM standard tiles (used when the
+     *   vector map could not be rendered).
+     * @returns {Promise} - resolves when the redraw is complete.
+     */
+    _redrawRaster (renderZoom, token, osmFallback) {
+        const config = osmFallback ? TILE_TYPES.osm : this._tileConfig();
+        const tileBase = config.base;
         const zoom = renderZoom;
         // Integer tile zoom for tile URLs; remaining fraction becomes a scale.
-        const tileZoom = Math.max(MIN_ZOOM, Math.min(this._maxZoom(), Math.floor(zoom)));
+        const tileZoom = Math.max(MIN_ZOOM, Math.min(config.maxZoom, Math.floor(zoom)));
         const tilePx = TILE_SIZE * Math.pow(2, zoom - tileZoom);
         const n = Math.pow(2, tileZoom);
         // Stage edges in render-zoom world pixels.
@@ -1346,12 +1458,25 @@ class ExtensionBlocks {
                     ctx.drawImage(tile.img, Math.floor(tile.dx), Math.floor(tile.dy), drawPx, drawPx);
                 }
             }
-            this._drawMarkers(ctx, zoom, left, top);
-            this._drawCenterMark(ctx);
-            this._drawAttribution(ctx);
-            this.runtime.renderer.updateBitmapSkin(this._skinId, this._canvas, 1);
-            this.runtime.requestRedraw();
+            this._finishRedraw(zoom, config.attribution);
         });
+    }
+
+    /**
+     * Draw pins, center mark and attribution over the map, then push the
+     * canvas to the stage.
+     * @param {number} zoom - fractional zoom the map was rendered at.
+     * @param {string} attribution - attribution of the drawn map.
+     */
+    _finishRedraw (zoom, attribution) {
+        const ctx = this._ctx;
+        const left = this._lngToWorldX(this.centerLng, zoom) - (STAGE_WIDTH / 2);
+        const top = this._latToWorldY(this.centerLat, zoom) - (STAGE_HEIGHT / 2);
+        this._drawMarkers(ctx, zoom, left, top);
+        this._drawCenterMark(ctx);
+        this._drawAttribution(ctx, attribution);
+        this.runtime.renderer.updateBitmapSkin(this._skinId, this._canvas, 1);
+        this.runtime.requestRedraw();
     }
 
     // ---- Blocks: display / move / zoom ----
@@ -1419,8 +1544,9 @@ class ExtensionBlocks {
      *   best match, or null when nothing was found or the request failed.
      */
     _geocodeNominatim (keyword) {
+        const language = encodeURIComponent(this._nominatimLanguage());
         const url = 'https://nominatim.openstreetmap.org/search' +
-            `?q=${encodeURIComponent(keyword)}&format=json&limit=1&accept-language=ja`;
+            `?q=${encodeURIComponent(keyword)}&format=json&limit=1&accept-language=${language}`;
         return fetch(url, {headers: {Accept: 'application/json'}})
             .then(response => response.json())
             .then(data => {
@@ -1484,12 +1610,14 @@ class ExtensionBlocks {
             Math.abs(lat) > 90 || Math.abs(lng) > 180 || typeof fetch === 'undefined') {
             return Promise.resolve(null);
         }
-        const key = `${lat.toFixed(4)},${lng.toFixed(4)}`;
+        const language = this._nominatimLanguage();
+        // Keyed by language too: the same point reads differently per language.
+        const key = `${language}|${lat.toFixed(4)},${lng.toFixed(4)}`;
         const cache = this._reverseGeocodeCache;
         if (cache.has(key)) return cache.get(key);
         const url = 'https://nominatim.openstreetmap.org/reverse' +
             `?lat=${encodeURIComponent(lat)}&lon=${encodeURIComponent(lng)}` +
-            '&format=json&zoom=18&accept-language=ja';
+            `&format=json&zoom=18&accept-language=${encodeURIComponent(language)}`;
         const request = fetch(url, {headers: {Accept: 'application/json'}})
             .then(response => response.json())
             .then(data => {
@@ -1518,25 +1646,27 @@ class ExtensionBlocks {
      * (丸の内 / 丸の内一丁目) or repeats it. The hamlet (字) is skipped when a
      * neighbourhood (丁目) is present, since Nominatim then reports a nearby
      * named area rather than part of the address. A missing Japanese
-     * prefecture is filled in from the ISO 3166-2 code.
+     * prefecture is filled in from the ISO 3166-2 code. Both only apply when
+     * the results are in Japanese (language ja / local); otherwise (e.g. a
+     * Japanese address in English) the parts are joined with ", ".
      * @param {object} address - Nominatim "address" object.
      * @returns {string} - the address, or '' when nothing usable.
      */
     _formatAddress (address) {
         if (!address) return '';
-        const isJapan = address.country_code === 'jp';
+        const japaneseStyle = address.country_code === 'jp' && this._nominatimLanguage() === 'ja';
         const keys = ADDRESS_PARTS.filter(key => !(key === 'hamlet' && address.neighbourhood));
         const parts = keys
             .map(key => (typeof address[key] === 'string' ? address[key].trim() : ''))
             .filter(part => part !== '');
-        if (isJapan && !address.province && !address.state) {
+        if (japaneseStyle && !address.province && !address.state) {
             const code = /^JP-(\d{2})$/.exec(address['ISO3166-2-lvl4'] || '');
             const prefecture = code ? JP_PREFECTURES[Number(code[1]) - 1] : null;
             if (prefecture) parts.unshift(prefecture);
         }
         const kept = parts.filter((part, i) =>
             !parts.slice(i + 1).some(later => later.startsWith(part)));
-        return kept.join(isJapan ? '' : ', ');
+        return kept.join(japaneseStyle ? '' : ', ');
     }
 
     /**
@@ -1566,6 +1696,20 @@ class ExtensionBlocks {
         }
         // Re-clamp in case the new tile type has a lower max zoom.
         this.zoom = this._clampZoom(this.zoom);
+        return this._redraw();
+    }
+
+    /**
+     * Set the language of map labels and of keyword / address lookups.
+     * Unknown values are ignored.
+     * @param {object} args - block arguments.
+     * @returns {Promise} - resolves when the map has been redrawn.
+     */
+    setMapLanguage (args) {
+        const lang = Cast.toString(args.LANG);
+        if (!MAP_LANGUAGES.includes(lang)) return;
+        this._language = lang;
+        if (this._vectorMap) this._vectorMap.setLanguage(lang);
         return this._redraw();
     }
 
